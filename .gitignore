@@ -1,0 +1,19 @@
+# bytecode files
+pycache/
+*.pyc
+
+# those weird windows files
+.DS_StoreThumbs.db
+
+# virtual environments should I ever get that crazy and pip stuff
+venv/
+.venv/
+env/
+.pip-modules/
+pip-log.txt
+
+#Editor/IDE Files (Specific to your setup, if needed)
+.vscode/
+
+Custom Project Files
+*.tok

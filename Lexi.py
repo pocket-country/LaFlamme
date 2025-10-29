@@ -1,4 +1,4 @@
-from StrucDef import Token, TokenType, CharacterStream
+from StructDef import Token, TokenType, CharacterStream
 import sys
 import os
 from typing import List, Optional
