@@ -117,7 +117,7 @@ def get_next_token(stream: CharacterStream) -> Token:
 def tokenize_file_to_output(input_filename: str, output_filename: str):
     """Reads input file, tokenizes content, and writes tokens to output file."""
     
-    # 1. Read entire input file content
+    # Read entire input file content
     try:
         with open(input_filename, 'r', encoding='utf-8') as f:
             source_code = f.read()
@@ -128,7 +128,7 @@ def tokenize_file_to_output(input_filename: str, output_filename: str):
         print(f"Error reading input file: {e}")
         return
 
-    # 2. Tokenize the content
+    # Tokenize the content
     stream = CharacterStream(source_code)
     tokens: List[Token] = []
     
@@ -138,7 +138,7 @@ def tokenize_file_to_output(input_filename: str, output_filename: str):
         if token.type == TokenType.EOF:
             break
             
-    # 3. Write tokens to the output file
+    # Write tokens to the output file
     try:
         with open(output_filename, 'w', encoding='utf-8') as f:
             for token in tokens:
