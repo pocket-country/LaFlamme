@@ -1,6 +1,8 @@
 # bytecode files
 pycache/
 *.pyc
+# Pictures
+*.png
 
 # those weird windows files
 .DS_StoreThumbs.db

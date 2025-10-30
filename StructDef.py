@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from typing import List, Optional
 from enum import Enum 
 
+## Definitions used by Lexi
+
 # Token Type Definition (ENUM) ---
 
 class TokenType(Enum):
@@ -74,3 +76,34 @@ class CharacterStream:
             return self.source[target_pos]
         return None
     
+## Definitions used by Pedro
+# --- PDA State Definitions ---
+# These represent the nodes in the state machine.
+Q_START = 'q_start'      # Ready for a new statement or comment
+Q_CODE = 'q_code'        # Currently processing SQL code
+Q_CMMT_ML = 'q_cmmt_ml'  # Currently inside a multi-line comment (/* ... */)
+Q_CMMT_SL = 'q_cmmt_sl'  # Currently inside a single-line comment (--)
+Q_ACCEPT = 'q_accept'    # Final state reached upon EOF (Accept)
+
+
+# --- Stack Symbol Definitions ---
+# These are the non-terminals used by the PDA for context tracking.
+Z0 = 'Z0'                # Initial stack bottom marker
+S = 'S'                  # Symbol for an ongoing SQL statement/code block
+C_ML = 'C_ML'            # Symbol for an ongoing multi-line comment context
+C_SL = 'C_SL'            # Symbol for an ongoing single-line comment context
+
+
+# --- Stack Action Definitions ---
+# These are instructions for the parser's stack operation.
+PUSH_PREFIX = 'PUSH'
+POP = 'POP'
+NONE = 'NONE'
+
+
+# --- Action Name Definitions (Translator Mode) ---
+# These are strings mapped to executable functions in the parser's action handler.
+A_NULL = 'A_NULL'          # No action required
+A_CopyBuffer = 'A_CopyBuffer'  # Append token content to the statement buffer
+A_OutputCode = 'A_OutputCode'  # Finalize statement buffer and classify as CODE
+A_OutputCmmt = 'A_OutputCmmt'  # Finalize statement buffer and classify as CMMT
