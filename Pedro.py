@@ -89,7 +89,7 @@ class PDA:
 
         # --- Final Acceptance Check ---
         # Must end in an ACCEPT state with a clean stack (only Z0 remains)
-        if self.state == pda.S_ACCEPT and len(self.stack) == 1 and self.stack[0] == pda.Z0:
+        if self.state == pda.Q_ACCEPT and len(self.stack) == 1 and self.stack[0] == pda.G_Z0:
             print("\n--- PARSING SUCCESS ---")
             return True
         else:

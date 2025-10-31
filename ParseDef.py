@@ -38,10 +38,18 @@ PDA_TRANSITIONS = {
     (Q_START, tt.CONTENT_CHUNK, G_Z0):      (Q_CODE, [G_CD], A_CopyBuffer),
     (Q_START, tt.START_BLOCK_COMMENT, G_Z0):(Q_BK_CMMT, [G_BC], A_None),
     (Q_START, tt.START_LINE_COMMENT, G_Z0): (Q_LN_CMMT, [G_LC], A_None),
-
-    # --- CODE CONTEXT (= CC on stack) ---
-    # Accumulate code
-    (Q_CODE, 'CONTENT_CHUNK', G_CD):        (Q_CODE, [], A_CopyBuffer),
+    # slightly pathalogical but legal null program
+    (Q_START, tt.END_STATEMENT, G_Z0):      (Q_START, [], A_None),
+    # nothing on stack, in start, hit a newline (so consumed), go to next line and see wazzup
+    (Q_START, tt.NEWLINE, G_Z0):            (Q_START, [], A_None),
+   # in start, hit a newline as above, but there was a content chunk on the stack !!! confirm must be code?
+    (Q_START, tt.NEWLINE, G_CD):            (Q_CODE, [], A_None),
+        
+    # --- CODE CONTEXT (G_CD = CC on stack) ---
+    # Accumulate code ... why would this happen?  Two contiguous code chunks equlvalent to one code chunk ...
+    (Q_CODE, tt.CONTENT_CHUNK, G_CD):        (Q_CODE, [], A_CopyBuffer),
+    # skip a newline, stay in code (as no ";" yet) and keep accumulating ..
+    (Q_CODE, tt.NEWLINE, G_CD):              (Q_CODE, [], A_None),
 
     # Begin nested comment contexts
     (Q_CODE, tt.START_BLOCK_COMMENT, G_CD): (Q_BK_CMMT, [G_BC], A_None),
@@ -53,20 +61,24 @@ PDA_TRANSITIONS = {
     # End statement (main goal)
     (Q_CODE, tt.END_STATEMENT, G_CD):       (Q_START, [G_POP], A_OutputCode),
 
-    # EOF on code means final output
+    # EOF on code means final output - but maybe should have a ";"?
     (Q_CODE, tt.EOF, G_CD):                 (Q_ACCEPT, [G_POP], A_OutputCode),
 
-    # --- MULTI-LINE COMMENT CONTEXT (G_BC on stack) ---
+    # --- Block/ML Comment Context (G_BC on stack) ---
     # Accumulate comment content (non-ending chunk)
     (Q_BK_CMMT, tt.CONTENT_CHUNK, G_BC):    (Q_BK_CMMT, [], A_CopyBuffer),
 
-    # Ignore all other delimiters inside ML comment (e.g., Q_STR, START_BLOCK_COMMENT)
+    # Ignore all other delimiters inside Block comment (e.g., Q_STR, START_BLOCK_COMMENT)
     (Q_BK_CMMT, tt.SINGLE_QUOTE, G_BC):     (Q_BK_CMMT, [], A_CopyBuffer),
     (Q_BK_CMMT, tt.START_LINE_COMMENT, G_BC):(Q_BK_CMMT, [], A_CopyBuffer),
 
-    # End ML comment (pop the G_BC marker) -> Returns to previous context (S or Z0)
-    (Q_BK_CMMT, tt.END_BLOCK_COMMENT, G_BC):(Q_CODE, [G_POP], A_OutputCmmt), # Return to S
-    (Q_BK_CMMT, tt.END_BLOCK_COMMENT, G_Z0):  (Q_START, [G_POP], A_OutputCmmt), # Return to Z0
+    # End Block comment (pop the G_BC marker) -> Returns to previous context 
+    # ... which was a comment (!!!confirm)
+    (Q_BK_CMMT, tt.END_BLOCK_COMMENT, G_BC):(Q_START, [G_POP], A_OutputCmmt), 
+    # ... which was a code line ... (!!! confirm)
+    (Q_BK_CMMT, tt.END_BLOCK_COMMENT, G_CD):(Q_CODE, [G_POP], A_OutputCmmt), 
+    # ... which was the bottom of the stack (!!!) confirm
+    (Q_BK_CMMT, tt.END_BLOCK_COMMENT, G_Z0):  (Q_START, [G_POP], A_OutputCmmt),
 
     # --- SINGLE-LINE COMMENT CONTEXT (G_LC on stack) ---
     # Accumulate comment content (non-ending chunk)

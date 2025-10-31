@@ -1,0 +1,44 @@
+digraph PDA {
+	rankdir=LR; // Left to Right layout
+	node [shape=circle, style=filled, fillcolor="#E6F0FF"];
+	subgraph cluster_key {
+		label = "State Legend"; color=lightgrey;
+		node [shape=none, fillcolor=none];
+		Key [label="Edge Label Format:\nInput/Stack_Top \u2192 Stack_Action / Action"];
+	}
+	// Define special states
+	q_accept [shape=doublecircle, fillcolor="#B2FFB2"]; // Final Accept State
+	initial_node [shape=point];
+	initial_node -> q_start;
+
+	// Transitions (Edges)
+	q_start -> q_code [label="CONTENT_CHUNK\nStack: Z0 → ['CC']\nAction: A_CopyBuffer", fontname="Monospace"];
+	q_start -> q_bk_cmmt [label="/*\nStack: Z0 → ['BC']\nAction: A_None", fontname="Monospace"];
+	q_start -> q_ln_cmmt [label="--\nStack: Z0 → ['LC']\nAction: A_None", fontname="Monospace"];
+	q_code -> q_code [label="CONTENT_CHUNK\nStack: CC → []\nAction: A_CopyBuffer", fontname="Monospace"];
+	q_code -> q_bk_cmmt [label="/*\nStack: CC → ['BC']\nAction: A_None", fontname="Monospace"];
+	q_code -> q_ln_cmmt [label="--\nStack: CC → ['LC']\nAction: A_None", fontname="Monospace"];
+	q_code -> q_str [label="'\nStack: CC → ['STR']\nAction: A_CopyBuffer", fontname="Monospace"];
+	q_code -> q_start [label=";\nStack: CC → ['POP']\nAction: A_OutputCode", fontname="Monospace"];
+	q_code -> q_accept [label="EOF\nStack: CC → ['POP']\nAction: A_OutputCode", fontname="Monospace"];
+	q_bk_cmmt -> q_bk_cmmt [label="CONTENT_CHUNK\nStack: BC → []\nAction: A_CopyBuffer", fontname="Monospace"];
+	q_bk_cmmt -> q_bk_cmmt [label="'\nStack: BC → []\nAction: A_CopyBuffer", fontname="Monospace"];
+	q_bk_cmmt -> q_bk_cmmt [label="--\nStack: BC → []\nAction: A_CopyBuffer", fontname="Monospace"];
+	q_bk_cmmt -> q_code [label="*/\nStack: BC → ['POP']\nAction: A_OutputCmmt", fontname="Monospace"];
+	q_bk_cmmt -> q_start [label="*/\nStack: Z0 → ['POP']\nAction: A_OutputCmmt", fontname="Monospace"];
+	q_ln_cmmt -> q_ln_cmmt [label="CONTENT_CHUNK\nStack: LC → []\nAction: A_CopyBuffer", fontname="Monospace"];
+	q_ln_cmmt -> q_ln_cmmt [label="'\nStack: LC → []\nAction: A_CopyBuffer", fontname="Monospace"];
+	q_ln_cmmt -> q_code [label="\n\nStack: LC → ['POP']\nAction: A_OutputCmmt", fontname="Monospace"];
+	q_ln_cmmt -> q_start [label="\n\nStack: Z0 → ['POP']\nAction: A_OutputCmmt", fontname="Monospace"];
+	q_str -> q_str [label="CONTENT_CHUNK\nStack: STR → []\nAction: A_CopyBuffer", fontname="Monospace"];
+	q_str -> q_str [label="/*\nStack: STR → []\nAction: A_CopyBuffer", fontname="Monospace"];
+	q_str -> q_code [label="'\nStack: STR → ['POP']\nAction: A_CopyBuffer", fontname="Monospace"];
+	q_start -> q_accept [label="EOF\nStack: Z0 → []\nAction: A_None", fontname="Monospace"];
+
+	// State Definitions (Nodes)
+	q_bk_cmmt;
+	q_code;
+	q_ln_cmmt;
+	q_start;
+	q_str;
+}
