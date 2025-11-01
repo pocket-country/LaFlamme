@@ -1,6 +1,6 @@
 01 One line block comment
 02 One line SQL
 03 One line block comment + One line SQL
-04 Null pgm. (";")
+04 Null program (";")
 05 Multi-line SQL
 06 Multi-line SQL w/ embedded block comment

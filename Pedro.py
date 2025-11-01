@@ -8,6 +8,8 @@ import StructDef as tt
 import ParseDef as pda
 import os
 
+from Constants import TestStatus
+
 # --- PDA Definition ---
 
 # The PDA's transitions as a dictionary:
@@ -104,7 +106,7 @@ class PDA:
 
 # --- Main Execution Block ---
 
-def parse_file(input_filename: str, mode = "quite"):
+def parse_file(input_file_path: str, mode = 'verbose'):
     """Tokenizes and then parses the input file."""
 
     # Lexing Phase
@@ -112,16 +114,17 @@ def parse_file(input_filename: str, mode = "quite"):
         from Lexi import get_next_token # Import the lexer function
 
         # Read file content
-        with open(input_filename, 'r') as f:
+        with open(input_file_path, 'r') as f:
             source_code = f.read()
     except FileNotFoundError:
-        print(f"Error: Input file not found: {input_filename}")
-        return False
+        print(f"Error: Input file not found: {input_file_path}")
+        return TestStatus.FILE_ERROR
     except ImportError:
         print("Error: Could not import Lexi. Please ensure 'Lexi.py' is in the same directory.")
-        return False
+        return TestStatus.FILE_ERROR
 
-    print(f"Running parser on {input_filename}\n")
+    if mode == 'verbose':
+        print(f"Running parser on {input_file_path}\n")
 
     # Iterate, buidling a token list
     stream = CharacterStream(source_code)
@@ -133,7 +136,7 @@ def parse_file(input_filename: str, mode = "quite"):
             break
 
     # for diagnostics, write token list to a file
-    base_name, ext = os.path.splitext(input_filename)
+    base_name, ext = os.path.splitext(input_file_path)
     token_filename = base_name + '.tok'
 
     try:
@@ -143,9 +146,10 @@ def parse_file(input_filename: str, mode = "quite"):
 
     except Exception as e:
         print(f"Error in token output file: {e}")
-        return False
+        return TestStatus.FILE_ERROR
 
-    print(f"Lexi OK, tokens in {token_filename}\n")
+    if mode == 'verbose':
+        print(f"Lexi OK, tokens in {token_filename}\n")
 
     # Parsing Phase
     # instantiate parser class, load in tokens ... 
@@ -153,10 +157,14 @@ def parse_file(input_filename: str, mode = "quite"):
     parser.set_token_list(tokens)
 
     # and run ...
-    print(f"Starting PDA run ...")
-    is_accepted = parser.run()
+    if mode == 'verbose':
+        print(f"Starting PDA run ...")
+    is_accepted = parser.run(mode)
 
-    return is_accepted
+    if is_accepted:
+        return TestStatus.PASSED
+    else:
+        return TestStatus.FAILED
 
 
 if __name__ == '__main__':
@@ -167,5 +175,8 @@ if __name__ == '__main__':
 
         if parse_file(input_filename):
             print(f"File {input_filename} processed successfully.")
+            sys.exit(0)
         else:
             print(f"File {input_filename} contained a syntax error.")
+            sys.exit(1)
+            
