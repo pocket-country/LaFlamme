@@ -57,7 +57,7 @@ class PDA:
                 print(f"CRITICAL ERROR: Unhandled or malformed stack action list: {stack_action_list}")
                 # or we could put on big boy pants and raise an exception, halt
 
-    def run(self) -> bool:
+    def run(self, mode = 'verbose') -> bool:
         self.state = pda.Q_START  # Reset state
         self.stack = [pda.G_Z0]  # Reset stack
 
@@ -75,35 +75,39 @@ class PDA:
                 self._handle_stack(stack_action)
 
                 # Debug print for tracing (remove this later)
-                print(f"Token: {token.ttype:<20} | State: {next_state:<10} | Stack: {[s for s in self.stack]}")
+                if mode == 'verbose':
+                    print(f"Token: {token.ttype:<20} | State: {next_state:<10} | Stack: {[s for s in self.stack]}")
 
             else:
                 # --- Error State ---
-                print("\n--- PARSING ERROR ---")
-                print(f"REJECTED: No transition defined for:")
-                print(f"  State: {self.state}")
-                print(f"  Token: {token.ttype}")
-                print(f"  Stack Top: {current_top}")
-                print(f"  At: Line {token.line}, Col {token.column}")
+                if mode == 'verbose':
+                    print("\n--- PARSING ERROR ---")
+                    print(f"REJECTED: No transition defined for:")
+                    print(f"  State: {self.state}")
+                    print(f"  Token: {token.ttype}")
+                    print(f"  Stack Top: {current_top}")
+                    print(f"  At: Line {token.line}, Col {token.column}")
                 return False
 
         # --- Final Acceptance Check ---
         # Must end in an ACCEPT state with a clean stack (only Z0 remains)
         if self.state == pda.Q_ACCEPT and len(self.stack) == 1 and self.stack[0] == pda.G_Z0:
-            print("\n--- PARSING SUCCESS ---")
+            if mode == 'verbose':
+                print("\n--- PARSING SUCCESS ---")
             return True
         else:
-            print("\n--- PARSING FAILURE (Final Check) ---")
-            print(f"Final State: {self.state}, Final Stack: {[s for s in self.stack]}")
+            if mode == verbose:
+                print("\n--- PARSING FAILURE (Final Check) ---")
+                print(f"Final State: {self.state}, Final Stack: {[s for s in self.stack]}")
             return False
 
 
 # --- Main Execution Block ---
 
-def parse_file(input_filename: str):
+def parse_file(input_filename: str, mode = "quite"):
     """Tokenizes and then parses the input file."""
 
-    # 1. Lexing Phase
+    # Lexing Phase
     try:
         from Lexi import get_next_token # Import the lexer function
 
@@ -144,9 +148,11 @@ def parse_file(input_filename: str):
     print(f"Lexi OK, tokens in {token_filename}\n")
 
     # Parsing Phase
+    # instantiate parser class, load in tokens ... 
     parser = PDA(pda.PDA_TRANSITIONS)
     parser.set_token_list(tokens)
 
+    # and run ...
     print(f"Starting PDA run ...")
     is_accepted = parser.run()
 
