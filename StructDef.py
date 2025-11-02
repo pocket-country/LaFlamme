@@ -18,9 +18,61 @@ NEWLINE = "\\n"
 CONTENT_CHUNK = "CONTENT_CHUNK"
 EOF = "EOF"
 
+# inspector to return symbol name for token string as we no longer have .name property as not an enumerate
+# !! Currently not used
+import inspect
+
+def get_constant_name(constant_value, module_alias):
+	"""
+	Retrieves the symbolic name (the variable name) for a constant's value 
+	by iterating through the module's attributes.
+
+	This is necessary because simple string constants do not retain 
+	their variable name (like Enums do).
+
+	Args:
+		constant_value (str): The value of the constant (e.g., '/*').
+		module_alias (module): The imported module (e.g., pda) to search within.
+
+	Returns:
+		str: The symbolic constant name (e.g., 'START_BLOCK_COMMENT') or 
+			the value itself if not found.
+	"""
+	
+	# Iterate through all members of the imported module
+	for name, value in inspect.getmembers(module_alias):
+		
+		# Check if the attribute is a constant (all caps) and not built-in (like __file__)
+		# And check if the value matches the one we are looking for
+		if name.isupper() and not name.startswith('__') and value == constant_value:
+			return name
+			
+	# If no match is found, return the original value (e.g., 'hello world')
+	return constant_value
+
+
+# --- Stack Context Object --- Currently Not in Use
+# This object is pushed onto the self.stack instead of a raw string.
+@dataclass
+class StackContext:
+    """Holds the full context for an ongoing statement or comment."""
+    
+    # The actual PDA control symbol (e.g., 'G_CD', 'G_BC')
+    control_symbol: str
+    
+    # The sequential ID for output logging (assigned when the context is created)
+    sequence_id: int
+    
+    # The list of token values (strings) collected for this unit
+    text_buffer: List[str]
+    
+    # The type of statement/unit being collected (e.g., 'CODE', 'CMMT')
+    statement_type: str
+
+
 # Token Definition (The Output of the Lexer) ---
 
-@dataclass(frozen=True)
+@dataclass(frozen = True)
 class Token:
     """Represents a lexical token from the source stream."""
     ttype: str

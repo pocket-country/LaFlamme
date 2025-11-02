@@ -10,9 +10,9 @@ class TestStatus(Enum):
 # --- 2. ANSI COLOR CONSTANTS ---
 class Colors:
     RESET = '\033[0m'
-    GREEN = '\033[92m'  # Pass color
-    RED = '\033[91m'    # Fail color
-    YELLOW = '\033[93m' # Error color
+    GREEN = '\033[92m'  # Pass color green
+    RED = '\033[91m'    # Fail color red
+    YELLOW = '\033[93m' # Error color yello
     BOLD = '\033[1m'
 
 # --- 3. UTF SYMBOL CONSTANTS ---

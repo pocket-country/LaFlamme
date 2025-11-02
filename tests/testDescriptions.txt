@@ -4,3 +4,6 @@
 04 Null program (";")
 05 Multi-line SQL
 06 Multi-line SQL w/ embedded block comment
+07 Line/DD comment
+08 Line/DD comment w/ extra newline
+09 One line code w/ DD to eoln
