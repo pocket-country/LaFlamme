@@ -10,15 +10,8 @@ import os
 
 from Constants import TestStatus
 
-# --- PDA Definition ---
-
-# The PDA's transitions as a dictionary:
-# Key: (current_state, input_token_type, top_of_stack)
-# Value: (next_state, stack_action: List[StackSymbol], action)
-# transition dictionary PDA_TRANSITIONS imported from ParseDev
 
 # --- PDA Class Implementation ---
-
 class PDA:
     def __init__(self, transitions: Dict):
         self.transitions = transitions
@@ -30,17 +23,19 @@ class PDA:
         self.token_list = tokens
 
     # private method. Only side effects - stack manipulation.
-    def _handle_stack(self, action_list):
-        match action_list:
+    # note update to action being a single symbol/special symbol, rather than a list
+    # note special action symbols and that we never push the bottom-o-stack marker
+    def _handle_stack(self, action):
+        match action:
 
-            case []:
+            case pda.G_NUL:
             # if nothing to do ... empty list ... just exit
                 return
 
             # if action is POP just pop.
-            case [pda.G_POP]:
+            case pda.G_POP:
                 # guard against malformed stack process, could test symbol or for []
-                if len(self.stack) <=1:
+                if len(self.stack) <= 1:
                     Print("ERROR: Attempted to pop initial stack symbol Z0")
                     return
 
@@ -50,7 +45,7 @@ class PDA:
             # Note that in a more powerful parser we would want to have a mechanism for
             # pushing a sequence of symbols but here there should only ever be one.
             # using python magic syntax to assert one symbol in list, and assign that symbol
-            case [symbol_to_push]:
+            case G_CC | G_BC | G_LC | G_STR :
                 self.stack.append(symbol_to_push)
                 return
 
@@ -63,14 +58,27 @@ class PDA:
         self.state = pda.Q_START  # Reset state
         self.stack = [pda.G_Z0]  # Reset stack
 
+
+!!! this has to change to use our new token stream class
         for token in self.token_list:
             current_top = self.stack[-1]
-            transition_key = (self.state, token.ttype, current_top)
+            transition_trigger = (self.state, token.ttype, current_top)
 
             # --- Check for Transition Rule ---
             # if we find a rule ...
-            if transition_key in self.transitions:
-                next_state, stack_action, action = self.transitions[transition_key]
+            if transition_trigger in self.transitions:
+                transition_response = self.transitions[transition_trigger]
+                
+                # quick - log the transition!
+                # !!!! what about that normailize thing around function name?
+                xxx.trace.record_transition(
+                    transition_key,
+                    transition_response,
+                    success = True
+                )
+                
+                # now break it down into components and get 'er done
+                next_state, stack_action, action = transition_response
                 self.state = next_state
 
                 # --- Apply Stack Action ---
@@ -89,6 +97,16 @@ class PDA:
                     print(f"  Token: {token.ttype}")
                     print(f"  Stack Top: {current_top}")
                     print(f"  At: Line {token.line}, Col {token.column}")
+                
+                # log failed transition so capture trigger that failed
+                FAIL_ACTION = 
+                
+                self.trace.record_transition(
+                    trigger_key = trigger_key, 
+                    action_value = ('NULL', 'NULL', 'NULL')
+                    success = False
+                )
+                
                 return False
 
         # --- Final Acceptance Check ---
@@ -103,68 +121,6 @@ class PDA:
                 print(f"Final State: {self.state}, Final Stack: {[s for s in self.stack]}")
             return False
 
-
-# --- Main Execution Block ---
-
-def parse_file(input_file_path: str, mode = 'verbose'):
-    """Tokenizes and then parses the input file."""
-
-    # Lexing Phase
-    try:
-        from Lexi import get_next_token # Import the lexer function
-
-        # Read file content
-        with open(input_file_path, 'r') as f:
-            source_code = f.read()
-    except FileNotFoundError:
-        print(f"Error: Input file not found: {input_file_path}")
-        return TestStatus.FILE_ERROR
-    except ImportError:
-        print("Error: Could not import Lexi. Please ensure 'Lexi.py' is in the same directory.")
-        return TestStatus.FILE_ERROR
-
-    if mode == 'verbose':
-        print(f"Running parser on {input_file_path}\n")
-
-    # Iterate, buidling a token list
-    stream = CharacterStream(source_code)
-    tokens: List[Token] = []
-    while True:
-        token = get_next_token(stream)
-        tokens.append(token)
-        if token.ttype == tt.EOF:
-            break
-
-    # for diagnostics, write token list to a file
-    base_name, ext = os.path.splitext(input_file_path)
-    token_filename = base_name + '.tok'
-
-    try:
-        with open(token_filename, 'w', encoding='utf-8') as f:
-            for token in tokens:
-                f.write(token.to_test_line() + '\n')
-
-    except Exception as e:
-        print(f"Error in token output file: {e}")
-        return TestStatus.FILE_ERROR
-
-    if mode == 'verbose':
-        print(f"Lexi OK, tokens in {token_filename}\n")
-
-    # Parsing Phase
-    # instantiate parser class, load in tokens ... 
-    parser = PDA(pda.PDA_TRANSITIONS)
-    parser.set_token_list(tokens)
-
-    # and run ...
-    if mode == 'verbose':
-        print(f"Starting PDA run ...")
-    is_accepted = parser.run(mode)
-
-    if is_accepted:
-        return TestStatus.PASSED
-    else:
-        return TestStatus.FAILED
 
 
 if __name__ == '__main__':
