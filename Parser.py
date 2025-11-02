@@ -114,12 +114,6 @@ def parse_file(input_file_path: str, verbose = True):
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(file_content)
 
-hit the wall here, 3am!
-need to set up logging class.  
-do I keep it in this file or put in struct def?
-
-
-
 
     # Lexing Phase
     try:

@@ -4,7 +4,6 @@ from typing import List, Optional
 import re
 
 # Token Definition (The Output of the Lexer) ---
-
 @dataclass(frozen = True)
 class Token:
     """Represents a lexical token from the source stream."""
@@ -21,6 +20,7 @@ class Token:
 	def __repr__(self) -> str:
 		# Makes printing the object directly cleaner
 		return self.to_ascii_line()
+
 
 class CharacterStream:
     """
