@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 import re
 
+
 # Token Definition (The Output of the Lexer) ---
 @dataclass(frozen = True)
 class Token:
