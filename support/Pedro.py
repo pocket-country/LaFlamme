@@ -1,4 +1,4 @@
-# Pedro.py - Pushdown Automaton (PDA) Parser
+# --- Pedro.py --- Pushdown Automaton (PDA) Parser
 import sys
 from typing import List, Tuple, Dict, Optional, Union
 
@@ -13,14 +13,17 @@ from Constants import TestStatus
 
 # --- PDA Class Implementation ---
 class PDA:
-    def __init__(self, transitions: Dict):
+    def __init__(self, transitions: Dict, trans_trace):
         self.transitions = transitions
         self.stack: List[0] = [pda.G_Z0]  # Initialize with stack bottom Z0
         self.state: PDAState = pda.Q_START
         self.token_list: List[Token] = []
+        self.datalog = trans_trace          # we assume this has been properly initialized
 
     def set_token_list(self, tokens: List[Token]):
         self.token_list = tokens
+!!! stopped here.  Not sure I need the above mehtod, could be in initial
+!!! and set up for logger dependency injection so don't have to log in __main__ stand-alone mode.
 
     # private method. Only side effects - stack manipulation.
     # note update to action being a single symbol/special symbol, rather than a list
@@ -120,8 +123,8 @@ class PDA:
                 print("\n--- PARSING FAILURE (Final Check) ---")
                 print(f"Final State: {self.state}, Final Stack: {[s for s in self.stack]}")
             return False
-
-
+    
+    # end of PDA class definition
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:

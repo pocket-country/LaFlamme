@@ -62,7 +62,7 @@ class CharacterStream:
             return self.source[target_pos]
         return None
 
-
+# Currently Not Used
 class TokenStream:
 	"""
 	A stream for consuming Token objects parsed from a file of ASCII token lines.
