@@ -1,11 +1,10 @@
 ## --- Lexi.py --- 
 import sys
 import os
-
 from typing import List, Optional
-from StructDef import Token, CharacterStream
-import StructDef as tt  # so can access token types as tt.WHATEVER
 
+from .StructDef import Token, CharacterStream
+from . import StructDef as tt  # so can access token types as tt.WHATEVER
 
 # --- Lexer class implementation --- 
 class Lexer:
@@ -25,7 +24,6 @@ class Lexer:
                 return sequence
             sequence += char
         return sequence
-
 
     def _get_next_token(stream: CharacterStream) -> Token:
         """
@@ -135,18 +133,26 @@ class Lexer:
             tokens.append(token)
             if token.type == tt.EOF:
                 break
-
         
    def write_tokens_to_file(output_filename: str):
         """Writes tokens to output file."""
+        are_we_good = True
         try:
             with open(output_filename, 'w', encoding='utf-8') as f:
                 for token in tokens:
                     f.write(token.to_ascii_line() + '\n')
         except Exception as e:
+            are_we_good = False
             print(f"Error writing token output file: {e}")
-
+    
+        return are_we_good
+        
+    ## end of lexer class
+    
+    
 if __name__ == '__main__':
+
+    # if run in stand alone mode, set up to lex one file and save tokens in a .tok file
     # Usage: python Lexi.py <input_file>
     if len(sys.argv) != 2:
         print(f"Usage: python {os.path.basename(sys.argv[0])} <input_file.sql>")
@@ -154,40 +160,30 @@ if __name__ == '__main__':
 
     input_filename = sys.argv[1]
 
+    # Read entire input file content - our SQL source code
+    try:
+        with open(input_filename, 'r', encoding = 'utf-8') as f:
+            source_code = f.read()        
+        print("Lexi: SQL Source File Read")    
+    except FileNotFoundError:
+        print(f"Error: Input file '{input_filename}' not found.")
+        return
+    except Exception as e:
+        print(f"Error reading input file: {e}")
+        return
+
+    # Tokenize
+    stream = CharacterStream(source_code)
+    lexer = Lexer(stream)
+    lexer.run()
+    
+    print("Lexi: SQL Code Parsed")
+    
     # Determine output filename (x.sql -> x.tok)
     base_name, ext = os.path.splitext(input_filename)
     output_filename = base_name + '.tok'
 
-    tokenize_file_to_output(input_filename, output_filename)
-
-
-
-        # Read entire input file content
-        try:
-            with open(input_filename, 'r', encoding='utf-8') as f:
-                source_code = f.read()
-        except FileNotFoundError:
-            print(f"Error: Input file '{input_filename}' not found.")
-            return
-        except Exception as e:
-            print(f"Error reading input file: {e}")
-            return
-
-        # Tokenize the content
-        stream = CharacterStream(source_code)
-        tokens: List[Token] = []
-
-        while True:
-            token = get_next_token(stream)
-            tokens.append(token)
-            if token.type == tt.EOF:
-                break
-
-        # Write tokens to the output file
-        try:
-            with open(output_filename, 'w', encoding='utf-8') as f:
-                for token in tokens:
-                    f.write(token.to_test_line() + '\n')
-            print(f"Successfully tokenized '{input_filename}' to '{output_filename}'")
-        except Exception as e:
-            print(f"Error writing output file: {e}")
+    # Write tokens to the output file
+    result = lexer.write_tokens_to_file
+    if result:
+        print(f"Lexi: You can find the tokens in {output_filename}")

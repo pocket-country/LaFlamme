@@ -1,34 +1,25 @@
 # --- Pedro.py --- Pushdown Automaton (PDA) Parser
 import sys
 from typing import List, Tuple, Dict, Optional, Union
-
-from StructDef import Token, CharacterStream
-import StructDef as tt
-
-import ParseDef as pda
 import os
 
-from Constants import TestStatus
 
 
 # --- PDA Class Implementation ---
 class PDA:
-    def __init__(self, transitions: Dict, trans_trace):
+    def __init__(self, transitions: Dict, tokens, trans_trace):
         self.transitions = transitions
         self.stack: List[0] = [pda.G_Z0]  # Initialize with stack bottom Z0
         self.state: PDAState = pda.Q_START
-        self.token_list: List[Token] = []
+        self.token_list: List[Token] = tokens
         self.datalog = trans_trace          # we assume this has been properly initialized
 
-    def set_token_list(self, tokens: List[Token]):
-        self.token_list = tokens
-!!! stopped here.  Not sure I need the above mehtod, could be in initial
-!!! and set up for logger dependency injection so don't have to log in __main__ stand-alone mode.
-
-    # private method. Only side effects - stack manipulation.
-    # note update to action being a single symbol/special symbol, rather than a list
-    # note special action symbols and that we never push the bottom-o-stack marker
     def _handle_stack(self, action):
+        """ 
+        private method. Only side effects - stack manipulation.
+        Note special action symbols and that we never push the bottom-o-stack marker
+        Note: Only one stach symbol at a time
+        """
         match action:
 
             case pda.G_NUL:
@@ -60,9 +51,7 @@ class PDA:
     def run(self, mode = 'verbose') -> bool:
         self.state = pda.Q_START  # Reset state
         self.stack = [pda.G_Z0]  # Reset stack
-
-
-!!! this has to change to use our new token stream class
+        
         for token in self.token_list:
             current_top = self.stack[-1]
             transition_trigger = (self.state, token.ttype, current_top)
@@ -74,7 +63,7 @@ class PDA:
                 
                 # quick - log the transition!
                 # !!!! what about that normailize thing around function name?
-                xxx.trace.record_transition(
+                self.datalog.record_transition(
                     transition_key,
                     transition_response,
                     success = True
@@ -104,7 +93,7 @@ class PDA:
                 # log failed transition so capture trigger that failed
                 FAIL_ACTION = 
                 
-                self.trace.record_transition(
+                self.datalog.record_transition(
                     trigger_key = trigger_key, 
                     action_value = ('NULL', 'NULL', 'NULL')
                     success = False
@@ -125,17 +114,85 @@ class PDA:
             return False
     
     # end of PDA class definition
+    
+    class LesserTransTrace:
+        
+    def __init__:           
+        # because the AI loves me more wiht this here ...
+        pass            
+
+    def _normalize_action_value(action_tuple):
+        """Replaces function references in the action tuple with stable strings."""
+        # Assuming action_tuple = (<next_state>, <stack_action>, <execution_action>)
+        # The execution_action (index 2) is the function reference.
+        
+        # Get the function's name string:
+        func_name = action_tuple[2].__name__ if callable(action_tuple[2]) else str(action_tuple[2])
+        
+        # Return the new tuple with the name instead of the reference
+        return action_tuple[0], action_tuple[1], func_name       
+        
+    def record_transition(self, trigger_key, action_value, success = True):
+        """prints a single transition (real or ghost) console."""
+        # Ensure trigger_key is represented as a string for storage
+        trigger_str = str(trigger_key) 
+        
+        if success:
+            status = "Next"
+            normalized_action = _normalize_action_value(action_value)
+        else:
+            status = "Fail"
+            normalized_action = action_value
+            
+        print(f"trigger: {trigger_str}, action: {normalized_action}, result: {status}")
 
 if __name__ == '__main__':
+    
+    # Run in stand-alone mode just to test, with dummy tracer (hey! Dependency Injection, I'm now a Kool Kid)
+    # Because this is the PDA/Parser, we do have to run lexi first and do a bit of processing
+    # For real runs all this stuff is handled Parse.py
+    from .StructDef import Token, CharacterStream
+    from . import lexi
+    from . import ParseDef as parser_definition
+
     if len(sys.argv) < 2:
         print("Usage: python Pedro.py <input_file.sql>")
     else:
         input_filename = sys.argv[1]
 
-        if parse_file(input_filename):
-            print(f"File {input_filename} processed successfully.")
-            sys.exit(0)
-        else:
-            print(f"File {input_filename} contained a syntax error.")
-            sys.exit(1)
-            
+    # Lexing Phase
+    try:
+        from Lexi import get_next_token # Import the lexer function
+
+        # Read file content
+        with open(input_file_path, 'r') as f:
+            source_code = f.read()
+    except FileNotFoundError:
+        print(f"Error: Input file not found: {input_file_path}")
+    except ImportError:
+        print("Error: Could not import Lexi. Please ensure 'Lexi.py' is in the same directory.")
+
+    if verbose: print(f"Running parser on {input_file_path}\n")
+
+    # Iterate, buidling a token list from just read source code
+    stream = CharacterStream(source_code)
+    lexer = lexer(stream)
+    lexer.run()
+    
+    print("Pedro: Source code read => tokens)
+    
+   # Determine output filename (x.sql -> x.tok)
+    base_name, ext = os.path.splitext(input_filename)
+    output_filename = base_name + '.tok'
+
+    # Write tokens to the output file in case we want to inspect 'em
+    result = lexer.write_tokens_to_file
+    if result:
+        print(f"Lexi: You can find the tokens in {output_filename}")
+
+    # set up ruidimentary logger
+    logger = LesserTransTrace()
+    
+    # instantiate and call our PDA to parser
+    pda = PDA(def __init__(self, parser_definition, lexer.tokens, logger):
+    
