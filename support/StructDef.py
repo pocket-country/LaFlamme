@@ -18,9 +18,9 @@ class Token:
         escaped_value = self.value.replace('\n', '\\n')
         return f"[{self.line}:{self.column}] {self.ttype}: \"{escaped_value}\""
         
-	def __repr__(self) -> str:
-		# Makes printing the object directly cleaner
-		return self.to_ascii_line()
+    def __repr__(self) -> str:
+        # Makes printing the object directly cleaner
+        return self.to_ascii_line()
 
 
 class CharacterStream:
@@ -64,70 +64,70 @@ class CharacterStream:
 
 # Currently Not Used
 class TokenStream:
-	"""
-	A stream for consuming Token objects parsed from a file of ASCII token lines.
-	Patterned after the CharacterStream for sequential access.
-	"""
-	
-	# Regex to parse a single line formatted by Token.to_ascii_line()
-	# Group 1: Line, Group 2: Column, Group 3: TType, Group 4: Value (including escaped chars)
-	TOKEN_PATTERN = re.compile(r"\[(\d+):(\d+)\]\s+([^:]+):\s+\"(.*)\"")
+    """
+    A stream for consuming Token objects parsed from a file of ASCII token lines.
+    Patterned after the CharacterStream for sequential access.
+    """
+    
+    # Regex to parse a single line formatted by Token.to_ascii_line()
+    # Group 1: Line, Group 2: Column, Group 3: TType, Group 4: Value (including escaped chars)
+    TOKEN_PATTERN = re.compile(r"\[(\d+):(\d+)\]\s+([^:]+):\s+\"(.*)\"")
 
-	def __init__(self, ascii_token_lines: str):
-		"""
-		Initializes the stream by parsing the ASCII input string into a list of Token objects.
-		"""
-		self.tokens = []
-		self.position = 0
-		
-		# Process the input string line by line
-		for line in ascii_token_lines.strip().split('\n'):
-			if not line:
-				continue
-				
-			match = self.TOKEN_PATTERN.match(line)
-			
-			if match:
-				line_num, col_num, ttype, escaped_value = match.groups()
-				
-				# Unescape newline characters that were escaped during serialization
-				actual_value = escaped_value.replace('\\n', '\n')
-				
-				# Create and store the new Token object
-				token = Token(
-					ttype=ttype,
-					value=actual_value,
-					line=int(line_num),
-					column=int(col_num)
-				)
-				self.tokens.append(token)
-			else:
-				# Log an error or warning for malformed lines
-				print(f"Warning: Could not parse token line: {line[:50]}...")
-	
-	def next_token(self) -> Token | None:
-		"""
-		Returns the next token in the stream, or None if the stream is exhausted.
-		"""
-		if self.position < len(self.tokens):
-			token = self.tokens[self.position]
-			self.position += 1
-			return token
-		return None
+    def __init__(self, ascii_token_lines: str):
+        """
+        Initializes the stream by parsing the ASCII input string into a list of Token objects.
+        """
+        self.tokens = []
+        self.position = 0
+        
+        # Process the input string line by line
+        for line in ascii_token_lines.strip().split('\n'):
+            if not line:
+                continue
+                
+            match = self.TOKEN_PATTERN.match(line)
+            
+            if match:
+                line_num, col_num, ttype, escaped_value = match.groups()
+                
+                # Unescape newline characters that were escaped during serialization
+                actual_value = escaped_value.replace('\\n', '\n')
+                
+                # Create and store the new Token object
+                token = Token(
+                    ttype=ttype,
+                    value=actual_value,
+                    line=int(line_num),
+                    column=int(col_num)
+                )
+                self.tokens.append(token)
+            else:
+                # Log an error or warning for malformed lines
+                print(f"Warning: Could not parse token line: {line[:50]}...")
+    
+    def next_token(self) -> Token | None:
+        """
+        Returns the next token in the stream, or None if the stream is exhausted.
+        """
+        if self.position < len(self.tokens):
+            token = self.tokens[self.position]
+            self.position += 1
+            return token
+        return None
 
-	def peek(self) -> Token | None:
-		"""
-		Returns the next token without advancing the stream position.
-		"""
-		if self.position < len(self.tokens):
-			return self.tokens[self.position]
-		return None
-	
-	def is_empty(self) -> bool:
-		"""
-		Checks if the stream has been fully consumed.
-		"""
-		return self.position >= len(self.tokens)
+    def peek(self) -> Token | None:
+        """
+        Returns the next token without advancing the stream position.
+        """
+        if self.position < len(self.tokens):
+            return self.tokens[self.position]
+        return None
+    
+    def is_empty(self) -> bool:
+        """
+        Checks if the stream has been fully consumed.
+        """
+        return self.position >= len(self.tokens)
 
 
 # --- Stack Context Object 
@@ -155,30 +155,30 @@ class StackContext:
 import inspect
 
 def get_constant_name(constant_value, module_alias):
-	"""
-	Retrieves the symbolic name (the variable name) for a constant's value 
-	by iterating through the module's attributes.
+    """
+    Retrieves the symbolic name (the variable name) for a constant's value 
+    by iterating through the module's attributes.
 
-	This is necessary because simple string constants do not retain 
-	their variable name (like Enums do).
+    This is necessary because simple string constants do not retain 
+    their variable name (like Enums do).
 
-	Args:
-		constant_value (str): The value of the constant (e.g., '/*').
-		module_alias (module): The imported module (e.g., pda) to search within.
+    Args:
+        constant_value (str): The value of the constant (e.g., '/*').
+        module_alias (module): The imported module (e.g., pda) to search within.
 
-	Returns:
-		str: The symbolic constant name (e.g., 'START_BLOCK_COMMENT') or 
-			the value itself if not found.
-	"""
-	
-	# Iterate through all members of the imported module
-	for name, value in inspect.getmembers(module_alias):
-		
-		# Check if the attribute is a constant (all caps) and not built-in (like __file__)
-		# And check if the value matches the one we are looking for
-		if name.isupper() and not name.startswith('__') and value == constant_value:
-			return name
-			
-	# If no match is found, return the original value (e.g., 'hello world')
-	return constant_value
+    Returns:
+        str: The symbolic constant name (e.g., 'START_BLOCK_COMMENT') or 
+            the value itself if not found.
+    """
+    
+    # Iterate through all members of the imported module
+    for name, value in inspect.getmembers(module_alias):
+        
+        # Check if the attribute is a constant (all caps) and not built-in (like __file__)
+        # And check if the value matches the one we are looking for
+        if name.isupper() and not name.startswith('__') and value == constant_value:
+            return name
+            
+    # If no match is found, return the original value (e.g., 'hello world')
+    return constant_value
 

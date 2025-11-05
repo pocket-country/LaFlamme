@@ -4,17 +4,18 @@ import os
 from typing import List, Optional
 
 from .StructDef import Token, CharacterStream
-from . import StructDef as tt  # so can access token types as tt.WHATEVER
+from . import ParseDef as tt  # so can access token types as tt.WHATEVER
 
 # --- Lexer class implementation --- 
 class Lexer:
-    def __init__(self, stream);
-        self.stream = stream
+    def __init__(self, stream_source):
+        
+        self.stream = CharacterStream(stream_source)
         self.tokens = []
         
         
     # Internal function to consume a known sequence of characters
-    def _consume_sequence(stream: CharacterStream, length: int) -> str:
+    def _consume_sequence(self, stream: CharacterStream, length: int) -> str:
         """Consumes the next 'length' characters from the self.stream."""
         sequence = ""
         for _ in range(length):
@@ -25,11 +26,12 @@ class Lexer:
             sequence += char
         return sequence
 
-    def _get_next_token(stream: CharacterStream) -> Token:
+    def _get_next_token(self) -> Token:
         """
         Identifies and returns the next Token from the self.stream.
         This function relies heavily on peek() to check for multi-character delimiters
         before committing to consumption.
+        Uses instance variable storing a CharacterStream object
 
         Note: Token Types defined along with PDA rules in ParseDef.py
         """
@@ -42,7 +44,7 @@ class Lexer:
         while True:
             char = self.stream.peek()
             if char is None:
-                return Token(tt.EOF, "", self.stream.line, self.stream.column)
+                return Token(tt.T_EOF, "", self.stream.line, self.stream.column)
 
             # NOTE: Newlines are NOT skipped here; they are tokenized (see step 2)
             if char == ' ' or char == '\t':
@@ -58,42 +60,42 @@ class Lexer:
 
         # Check for EOF again after skipping whitespace
         if self.stream.peek() is None:
-            return Token(tt.EOF, "", self.stream.line, self.stream.column)
+            return Token(tt.T_EOF, "", self.stream.line, self.stream.column)
 
         # Single-character lookups are simplest
         char1 = self.stream.peek(1)
 
         if char1 == "'":
             self.stream.next_char()
-            return Token(tt.SINGLE_QUOTE, "'", start_line, start_column)
+            return Token(tt.T_SINGLE_QUOTE, "'", start_line, start_column)
 
         if char1 == ";":
             self.stream.next_char()
-            return Token(tt.END_STATEMENT, ";", start_line, start_column)
+            return Token(tt.T_END_STATEMENT, ";", start_line, start_column)
 
         # Multi-character lookups require peek(2)
         char2 = self.stream.peek(2)
 
         # Block Comment Start: /*
         if char1 == '/' and char2 == '*':
-            value = consume_sequence(stream, 2)
-            return Token(tt.START_BLOCK_COMMENT, value, start_line, start_column)
+            value = self._consume_sequence(self.stream, 2)
+            return Token(tt.T_START_BLOCK_COMMENT, value, start_line, start_column)
 
         # Block Comment End: */
         if char1 == '*' and char2 == '/':
-            value = consume_sequence(stream, 2)
-            return Token(tt.END_BLOCK_COMMENT, value, start_line, start_column)
+            value = self._consume_sequence(self.stream, 2)
+            return Token(tt.T_END_BLOCK_COMMENT, value, start_line, start_column)
 
         # Line Comment Start: --
         if char1 == '-' and char2 == '-':
-            value = consume_sequence(stream, 2)
-            return Token(tt.START_LINE_COMMENT, value, start_line, start_column)
+            value = self._consume_sequence(self.stream, 2)
+            return Token(tt.T_START_LINE_COMMENT, value, start_line, start_column)
 
         # Newline Token (Must be checked after all other delimiters)
         if char1 == '\n':
             self.stream.next_char()
             # The raw value is '\n', but the PDA uses the TokenType
-            return Token(tt.NEWLINE, '\n', start_line, start_column)
+            return Token(tt.T_NEWLINE, '\n', start_line, start_column)
 
         # If it's not a delimiter, it's a CONTENT_CHUNK
         chunk_value = ""
@@ -123,23 +125,23 @@ class Lexer:
             # If it's not a delimiter, consume it and append to the chunk
             chunk_value += self.stream.next_char()
 
-        return Token(tt.CONTENT_CHUNK, chunk_value, start_line, start_column)
+        return Token(tt.T_CONTENT_CHUNK, chunk_value, start_line, start_column)
 
 
-    def run_lexer:
+    def run(self):
         """ processes character stream into token list """
         while True:
-            token = _get_next_token(stream)
-            tokens.append(token)
-            if token.type == tt.EOF:
+            token = self._get_next_token()
+            self.tokens.append(token)
+            if token.ttype == tt.T_EOF:
                 break
-        
-   def write_tokens_to_file(output_filename: str):
+   
+    def write_tokens_to_file(self, output_filename: str):
         """Writes tokens to output file."""
         are_we_good = True
         try:
             with open(output_filename, 'w', encoding='utf-8') as f:
-                for token in tokens:
+                for token in self.tokens:
                     f.write(token.to_ascii_line() + '\n')
         except Exception as e:
             are_we_good = False
@@ -167,14 +169,13 @@ if __name__ == '__main__':
         print("Lexi: SQL Source File Read")    
     except FileNotFoundError:
         print(f"Error: Input file '{input_filename}' not found.")
-        return
+        sys.exit(1)
     except Exception as e:
         print(f"Error reading input file: {e}")
-        return
+        sys.exit(1)
 
     # Tokenize
-    stream = CharacterStream(source_code)
-    lexer = Lexer(stream)
+    lexer = Lexer(source_code)
     lexer.run()
     
     print("Lexi: SQL Code Parsed")
@@ -184,6 +185,9 @@ if __name__ == '__main__':
     output_filename = base_name + '.tok'
 
     # Write tokens to the output file
-    result = lexer.write_tokens_to_file
+    result = lexer.write_tokens_to_file(output_filename)
     if result:
         print(f"Lexi: You can find the tokens in {output_filename}")
+        sys.exit(0)
+    else:
+        sys.exit(1)

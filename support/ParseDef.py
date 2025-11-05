@@ -48,7 +48,7 @@ G_Z0 = 'Z0'               # Initial stack bottom marker
 G_CC = 'CC'               # Represents an ongoing content chunk - either a SQL statement/code block or comment text
 G_BC = 'BC'               # Context marker for a multi-line comment
 G_LC = 'LC'               # Context marker for a single-line comment
-G_ST = 'ST'             # Context marker for single-quoted string
+G_ST = 'ST'               # Context marker for single-quoted string
 G_POP = 'POP'             # Special symbol used in the action list to signify 'pop'
 G_NUL = 'NUL'             # Special symbol used in the action list to signify 'no action'
 
@@ -79,7 +79,7 @@ A_OutputCmmt = 'A_OutputCmmt'    # Finalize buffer, classify as CMMT, and clear
 # Value: (New_State, Stack_Action, Action_Name)
 # Where Stack_Action: Symbol in Q_XXX for PUSH, G_POP for pop stack, G_NONE for no action
 
---- 
+
 PDA_TRANSITIONS = {
     # --- STARTING NEW STATEMENTS (Z0 context) ---
     (Q_START, T_CONTENT_CHUNK, G_Z0):      (Q_CODE, G_CC, A_CopyBuffer),

@@ -3,7 +3,8 @@ import sys
 from typing import List, Tuple, Dict, Optional, Union
 import os
 
-
+from .StructDef import Token, CharacterStream
+from . import ParseDef as pda
 
 # --- PDA Class Implementation ---
 class PDA:
@@ -39,7 +40,7 @@ class PDA:
             # Note that in a more powerful parser we would want to have a mechanism for
             # pushing a sequence of symbols but here there should only ever be one.
             # using python magic syntax to assert one symbol in list, and assign that symbol
-            case G_CC | G_BC | G_LC | G_STR :
+            case pda.G_CC | pda.G_BC | pda.G_LC | pda.G_ST as symbol_to_push:
                 self.stack.append(symbol_to_push)
                 return
 
@@ -62,9 +63,8 @@ class PDA:
                 transition_response = self.transitions[transition_trigger]
                 
                 # quick - log the transition!
-                # !!!! what about that normailize thing around function name?
                 self.datalog.record_transition(
-                    transition_key,
+                    transition_trigger,
                     transition_response,
                     success = True
                 )
@@ -91,14 +91,12 @@ class PDA:
                     print(f"  At: Line {token.line}, Col {token.column}")
                 
                 # log failed transition so capture trigger that failed
-                FAIL_ACTION = 
-                
+                failed_transaction_response = ('NULL', 'NULL', 'NULL')
                 self.datalog.record_transition(
-                    trigger_key = trigger_key, 
-                    action_value = ('NULL', 'NULL', 'NULL')
+                    transition_trigger, 
+                    failed_transaction_response,
                     success = False
                 )
-                
                 return False
 
         # --- Final Acceptance Check ---
@@ -115,13 +113,13 @@ class PDA:
     
     # end of PDA class definition
     
-    class LesserTransTrace:
-        
-    def __init__:           
+class LesserTransTrace:
+    
+    def __init__(self):           
         # because the AI loves me more wiht this here ...
         pass            
 
-    def _normalize_action_value(action_tuple):
+    def _normalize_action_value(self, action_tuple):
         """Replaces function references in the action tuple with stable strings."""
         # Assuming action_tuple = (<next_state>, <stack_action>, <execution_action>)
         # The execution_action (index 2) is the function reference.
@@ -139,7 +137,7 @@ class PDA:
         
         if success:
             status = "Next"
-            normalized_action = _normalize_action_value(action_value)
+            normalized_action = self._normalize_action_value(action_value)
         else:
             status = "Fail"
             normalized_action = action_value
@@ -148,51 +146,57 @@ class PDA:
 
 if __name__ == '__main__':
     
+    from .StructDef import CharacterStream
+    from . import Lexi
+    
     # Run in stand-alone mode just to test, with dummy tracer (hey! Dependency Injection, I'm now a Kool Kid)
     # Because this is the PDA/Parser, we do have to run lexi first and do a bit of processing
-    # For real runs all this stuff is handled Parse.py
-    from .StructDef import Token, CharacterStream
-    from . import lexi
-    from . import ParseDef as parser_definition
-
+    # ... so basically repeat Lexi Main code and then test PDA functionality
+    # For real runs i.e "the application" all this stuff is handled Parse.py
+    
     if len(sys.argv) < 2:
         print("Usage: python Pedro.py <input_file.sql>")
     else:
         input_filename = sys.argv[1]
 
     # Lexing Phase
+    # Read entire input file content - our SQL source code
     try:
-        from Lexi import get_next_token # Import the lexer function
-
-        # Read file content
-        with open(input_file_path, 'r') as f:
-            source_code = f.read()
+        with open(input_filename, 'r', encoding = 'utf-8') as f:
+            source_code = f.read()        
+        print("Lexi: SQL Source File Read")    
     except FileNotFoundError:
-        print(f"Error: Input file not found: {input_file_path}")
-    except ImportError:
-        print("Error: Could not import Lexi. Please ensure 'Lexi.py' is in the same directory.")
+        print(f"Error: Input file '{input_filename}' not found.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error reading input file: {e}")
+        sys.exit(1)
 
-    if verbose: print(f"Running parser on {input_file_path}\n")
-
-    # Iterate, buidling a token list from just read source code
-    stream = CharacterStream(source_code)
-    lexer = lexer(stream)
+    # Tokenize
+    lexer = Lexi.Lexer(source_code)
     lexer.run()
     
-    print("Pedro: Source code read => tokens)
+    print("Lexi (via Pedro): SQL Code Parsed")
     
-   # Determine output filename (x.sql -> x.tok)
+    # Determine output filename (x.sql -> x.tok)
     base_name, ext = os.path.splitext(input_filename)
     output_filename = base_name + '.tok'
 
-    # Write tokens to the output file in case we want to inspect 'em
-    result = lexer.write_tokens_to_file
+    # Write tokens to the output file
+    result = lexer.write_tokens_to_file(output_filename)
     if result:
-        print(f"Lexi: You can find the tokens in {output_filename}")
+        print(f"Lexi (via Pedro): You can find the tokens in {output_filename}")
+    else:
+        sys.exit(1)
 
     # set up ruidimentary logger
     logger = LesserTransTrace()
     
     # instantiate and call our PDA to parser
-    pda = PDA(def __init__(self, parser_definition, lexer.tokens, logger):
-    
+    parser = PDA(pda.PDA_TRANSITIONS, lexer.tokens, logger)
+    result = parser.run()
+    if result:
+        print(f"Pedro: File parsed correctly")
+        sys.exit(0)
+    else:
+        sys.exit(1)
