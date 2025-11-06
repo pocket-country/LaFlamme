@@ -1,0 +1,72 @@
+# modify_first_line.py
+# 
+# Opens a file, reads all content, modifies only the first line by
+# appending new text, and then writes all content back to the file.
+# 
+import os
+import sys
+
+def modify_first_line(filepath: str, append_text: str):
+    """
+    Reads a file, modifies its first line, and rewrites the file content.
+    This pattern ensures safety and consistency regardless of file size (though 
+    it reads the entire file into memory).
+    """
+    
+    # 1. Read all lines into a list
+    try:
+        with open(filepath, 'r') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        print(f"Error: The file '{filepath}' was not found.")
+        return
+
+    # 2. Check if the file is empty
+    if not lines:
+        print(f"File '{filepath}' is empty. Nothing to modify.")
+        return
+
+    # 3. Modify the first line
+    # Strip any existing newline character (\n) from the end of the first line
+    first_line_content = lines[0].rstrip('\n')
+    
+    # Append the new text and ensure a single newline is added back
+    lines[0] = f"{first_line_content}{append_text}\n"
+
+    # 4. Write all content back to the original file
+    try:
+        # 'w' mode truncates the file, then writes the new content
+        with open(filepath, 'w') as f:
+            f.writelines(lines)
+            
+        print(f"Successfully modified the first line of '{filepath}'.")
+        
+    except Exception as e:
+        print(f"Error writing to file: {e}")
+
+
+# --- Example Usage ---
+if __name__ == "__main__":
+    # Create a dummy file for testing this script
+    test_file = "test_data.txt"
+    initial_content = [
+        "This is the original line.\n",
+        "This line should be preserved.\n",
+        "This line should also be preserved.\n"
+    ]
+
+    with open(test_file, 'w') as f:
+        f.writelines(initial_content)
+
+    print(f"Initial file content of {test_file}:")
+    with open(test_file, 'r') as f:
+        print(f.read())
+    
+    # Run the modification function
+    TEXT_TO_APPEND = " (MODIFIED by script)"
+    modify_first_line(test_file, TEXT_TO_APPEND)
+
+    print("-" * 20)
+    print(f"Final file content of {test_file}:")
+    with open(test_file, 'r') as f:
+        print(f.read())

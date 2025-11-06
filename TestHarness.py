@@ -64,7 +64,14 @@ def main():
         if match:
             test_id = match.group(1) 
             desc = test_desc.get(test_id, "No description available") 
-            
+  !!!! stopped here.  think through overall structure, ?? set up single file parser shell??    
+
+
+perverted PS shell --
+# Assumes you pass the arguments (e.g., .\tests\test01.sql) directly
+$args = $args -join ' '  # Rejoin arguments if they are split
+python -m support.Pedro $args  
+---
         #run the parse process & check result
         result = Pedro.parse_file(full_path, mode = 'silent')
         

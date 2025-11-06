@@ -1,0 +1,153 @@
+# support/run_tracer.py
+#
+# Module for managing traceability artifacts in a CSV format:
+# 1. Hashing the PDA configuration file content.
+# 2. Saving unique configuration files (objects).
+# 3. Writing unique log files per run (CSV format, one file per run).
+#
+import os
+import hashlib
+import json
+import datetime
+import uuid
+import csv
+from typing import List, Tuple, Any
+
+# --- Configuration Constants (Relative to the base_dir) ---
+
+# Directory where the log files (one per run) are stored
+LOG_DIR_NAME = 'tracing/logs'
+# Directory where the unique configuration files (hash-named) are stored
+OBJECTS_DIR_NAME = 'tracing/objects'
+# The encoding used for reading files and writing logs
+ENCODING = 'utf-8'
+
+# CSV Column Headers for the main transition log
+CSV_HEADERS = [
+    'timestamp',
+    'trigger_state', 'trigger_token', 'trigger_stack_top',
+    'action_next_state', 'action_stack_op', 'action_exec_func',
+    'success'
+]
+
+# --- Utility Class for Buffering Transitions ---
+
+class PDARunTrace:
+    """
+    Buffers all transition records for a single PDA run in memory.
+    """
+    def __init__(self):
+        # List of 4-element tuples: (trigger_key, action_value, success, timestamp)
+        self.trace_buffer: List[Tuple[Tuple, Tuple, bool, str]] = []
+
+    def record_transition(self, trigger_key: Tuple, action_value: Tuple, success: bool):
+        """Records a single PDA transition (or failure point)."""
+        # Timestamp captured at the moment of the event
+        timestamp = datetime.datetime.now().isoformat()
+        
+        # We store the trigger and action values as they were defined/used
+        self.trace_buffer.append((trigger_key, action_value, success, timestamp))
+
+    def get_log_data(self) -> List[Tuple]:
+        """Returns the complete, current trace buffer."""
+        return self.trace_buffer
+
+
+# --- Hashing and Configuration Management ---
+
+def calculate_config_hash(file_content: str) -> str:
+    """Calculates a stable SHA-1 hash of the file content."""
+    return hashlib.sha1(file_content.encode(ENCODING)).hexdigest()
+
+
+def save_config_snapshot(base_dir: str, config_hash: str, file_content: str) -> str:
+    """
+    Saves the PDA config file content to the tracing/objects directory, 
+    named by its hash. Ensures uniqueness.
+    Returns the absolute path to the saved file.
+    """
+    full_objects_dir = os.path.join(base_dir, OBJECTS_DIR_NAME)
+    
+    if not os.path.exists(full_objects_dir):
+        os.makedirs(full_objects_dir)
+        
+    filepath = os.path.join(full_objects_dir, f"{config_hash}.py")
+    
+    # Only write the file if it doesn't already exist (due to the hash match)
+    if not os.path.exists(filepath):
+        with open(filepath, 'w', encoding=ENCODING) as f:
+            f.write(file_content)
+            
+    return filepath
+
+
+# --- Run Log Writer (Per-Run CSV File) ---
+
+def write_run_log(
+    base_dir: str, 
+    source_id: str, 
+    config_file_content: str, 
+    final_status: Any, 
+    final_trace: List[Tuple]
+) -> str:
+    """
+    Generates a unique filename (Timestamp + UUID) and writes a complete 
+    CSV log file for a single test run.
+    """
+    # 1. Calculate the stable configuration hash and save the snapshot
+    config_hash = calculate_config_hash(config_file_content)
+    save_config_snapshot(base_dir, config_hash, config_file_content)
+    
+    # 2. Build unique filename (Timestamp + UUID)
+    # Using microsecond precision for the timestamp prefix
+    now = datetime.datetime.now()
+    timestamp_prefix = now.strftime("%Y%m%d-%H%M%S-%f")
+    unique_suffix = uuid.uuid4().hex[:6]
+    log_filename = f"{timestamp_prefix}-{unique_suffix}.csv"
+    
+    full_log_dir = os.path.join(base_dir, LOG_DIR_NAME)
+    
+    if not os.path.exists(full_log_dir):
+        os.makedirs(full_log_dir)
+        
+    filepath = os.path.join(full_log_dir, log_filename)
+
+    # 3. Write the CSV file with metadata header
+    with open(filepath, 'w', newline='', encoding=ENCODING) as csvfile:
+        writer = csv.writer(csvfile)
+
+        # Write Metadata Header (Human-readable audit data)
+        writer.writerow([f"# Run Timestamp: {now.isoformat()}"])
+        writer.writerow([f"# Source Input: {source_id}"])
+        writer.writerow([f"# Final Status: {final_status}"])
+        writer.writerow([f"# Config Hash: {config_hash}"])
+        writer.writerow(['#'])
+        
+        # Write CSV Headers
+        writer.writerow(CSV_HEADERS)
+
+        # 4. Write Trace Data Rows
+        for trigger_key, action_value, success, trace_time in final_trace:
+            # Flatten the nested tuple data into a single, ordered list for CSV
+            
+            # Trigger Key components: state, token, stack_top
+            trigger_data = list(trigger_key)
+            
+            # Action Value components: next_state, stack_op, exec_func
+            action_data = list(action_value)
+            
+            # The execution function must be stored as its name (string)
+            if callable(action_data[2]):
+                action_data[2] = action_data[2].__name__
+            else:
+                action_data[2] = str(action_data[2])
+                
+            row = [
+                trace_time,
+                *trigger_data,  # Unpack the 3 trigger elements
+                *action_data,   # Unpack the 3 action elements
+                success         # Add the boolean status
+            ]
+            writer.writerow(row)
+            
+    return filepath

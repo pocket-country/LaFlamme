@@ -53,20 +53,41 @@ class PDA:
         self.state = pda.Q_START  # Reset state
         self.stack = [pda.G_Z0]  # Reset stack
         
-        for token in self.token_list:
-            current_top = self.stack[-1]
-            transition_trigger = (self.state, token.ttype, current_top)
+        # We loop forever processing tokens.  Three exit conditions are contained in the loop body:
+        # - hit the end of the token list
+        # - find ann EOF token
+        # - fail to find a transition rule
+        
+        # start at the beginning
+        tptr = 0
+        
+        while True:
+            
+            # Attempt to get the current token.  Bounces if past end of list
+            try:
+                current_token = self.token_list[tptr]
+                # got a token, build trigger signature
+                current_top = self.stack[-1]
+                transition_trigger = (self.state, current_token.ttype, current_top)
+            except IndexError:
+                  break
+                
+            # Look for end of file marker.  We are trusting the Lexer on this one.
+            # Note this means we will never have a transition rule looking for EOF!
+            if current_token.ttype == pda.T_EOF:
+                break
 
-            # --- Check for Transition Rule ---
-            # if we find a rule ...
+            # Look for a transition rule that can be triggered by the current state of affairs
+            # set up by a successful get token ... that was not the end of file.
             if transition_trigger in self.transitions:
+                # If we find a rule ...
                 transition_response = self.transitions[transition_trigger]
                 
                 # quick - log the transition!
                 self.datalog.record_transition(
                     transition_trigger,
                     transition_response,
-                    success = True
+                    'Next'
                 )
                 
                 # now break it down into components and get 'er done
@@ -77,38 +98,53 @@ class PDA:
                 self._handle_stack(stack_action)
 
                 # Debug print for tracing (remove this later)
-                if mode == 'verbose':
-                    print(f"Token: {token.ttype:<20} | State: {next_state:<10} | Stack: {[s for s in self.stack]}")
-
+                #if mode == 'verbose':
+                #    print(f"Token: {token.ttype:<20} | State: {next_state:<10} | Stack: {[s for s in self.stack]}")
             else:
-                # --- Error State ---
+                # If we don't - syntax error (or bad rule set!)
                 if mode == 'verbose':
                     print("\n--- PARSING ERROR ---")
                     print(f"REJECTED: No transition defined for:")
                     print(f"  State: {self.state}")
-                    print(f"  Token: {token.ttype}")
+                    print(f"  Token: {current_token.ttype}")
                     print(f"  Stack Top: {current_top}")
-                    print(f"  At: Line {token.line}, Col {token.column}")
+                    print(f"  At: Line {current_token.line}, Col {current_token.column}")
                 
                 # log failed transition so capture trigger that failed
                 failed_transaction_response = ('NULL', 'NULL', 'NULL')
                 self.datalog.record_transition(
                     transition_trigger, 
                     failed_transaction_response,
-                    success = False
+                    'Fail'
                 )
-                return False
+                break
+                
+            # a little tiny bit of code that if missing will burn it all down.  
+            # End of WHILE TRUE loop.  Increment token list pointer.
+            tptr += 1
 
-        # --- Final Acceptance Check ---
-        # Must end in an ACCEPT state with a clean stack (only Z0 remains)
-        if self.state == pda.Q_ACCEPT and len(self.stack) == 1 and self.stack[0] == pda.G_Z0:
+        # Out of token processing loop -- see how we finished up (Final Acceptance Check)
+        if current_token.ttype == pda.T_EOF and len(self.stack) == 1 and self.stack[0] == pda.G_Z0:
+            # log a dummy End of File (EOF) transition
+            eof_transaction_response = ('EOF= > Exit', 'NULL', 'NULL')
+            self.datalog.record_transition(
+                transition_trigger, 
+                eof_transaction_response,
+                'EOF'
+            )
             if mode == 'verbose':
                 print("\n--- PARSING SUCCESS ---")
+                
             return True
         else:
-            if mode == verbose:
-                print("\n--- PARSING FAILURE (Final Check) ---")
-                print(f"Final State: {self.state}, Final Stack: {[s for s in self.stack]}")
+            if mode == 'verbose':
+                print("\n--- PARSING FAILURE ---")
+                print(f"REJECTED: Stack not clean at EOF:")
+                print(f"  State: {self.state}")
+                print(f"  Token: {current_token.ttype}")
+                print(f"  Stack Top: {current_top}")
+                print(f"  At: Line {current_token.line}, Col {current_token.column}")
+   
             return False
     
     # end of PDA class definition
@@ -130,17 +166,11 @@ class LesserTransTrace:
         # Return the new tuple with the name instead of the reference
         return action_tuple[0], action_tuple[1], func_name       
         
-    def record_transition(self, trigger_key, action_value, success = True):
+    def record_transition(self, trigger_key, action_value, status: str):
         """prints a single transition (real or ghost) console."""
         # Ensure trigger_key is represented as a string for storage
         trigger_str = str(trigger_key) 
-        
-        if success:
-            status = "Next"
-            normalized_action = self._normalize_action_value(action_value)
-        else:
-            status = "Fail"
-            normalized_action = action_value
+        normalized_action = self._normalize_action_value(action_value)
             
         print(f"trigger: {trigger_str}, action: {normalized_action}, result: {status}")
 
@@ -199,4 +229,5 @@ if __name__ == '__main__':
         print(f"Pedro: File parsed correctly")
         sys.exit(0)
     else:
+        print(f"Pedro: File did not parse")
         sys.exit(1)

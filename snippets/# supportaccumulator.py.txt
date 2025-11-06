@@ -1,0 +1,113 @@
+# support/accumulator.py
+#
+# Class responsible for managing the content buffer (tokens being copied) 
+# and handling all output file I/O for the PDA Transformer.
+#
+import os
+import datetime
+from typing import List
+
+# --- Configuration Constants ---
+OUTPUT_FILE_NAME = "pda_output.txt"
+ENCODING = 'utf-8'
+
+class OutputAccumulator:
+    """
+    Manages the buffer of content being accumulated by the PDA and handles 
+    writing the final output file.
+    
+    This class is injected into the PDAParser (Dependency Injection).
+    """
+    
+    def __init__(self, base_dir: str, source_id: str):
+        # Dependencies / State
+        self.base_dir = base_dir
+        self.source_id = source_id
+        
+        # Internal Buffer (The 'Soup Pot' for content chunks)
+        # Stores content chunks (strings) from PDA actions
+        self.content_buffer: List[str] = []
+        
+        # File handle management
+        self.output_filepath = os.path.join(self.base_dir, OUTPUT_FILE_NAME)
+        self._file_handle = None
+
+        # Initialization: Open file in append mode once
+        try:
+            # 'a' mode opens the file for appending (creates file if it doesn't exist)
+            self._file_handle = open(self.output_filepath, 'a', encoding=ENCODING)
+            self._write_header()
+        except Exception as e:
+            print(f"FATAL ERROR: Could not initialize Output Accumulator file: {e}", file=os.sys.stderr)
+            # Ensure the handle is set to None if creation failed
+            self._file_handle = None 
+
+    def _write_header(self):
+        """Writes a metadata header to the output file on initialization."""
+        if self._file_handle:
+            now = datetime.datetime.now().isoformat()
+            self._file_handle.write("=" * 60 + "\n")
+            self._file_handle.write(f"# PDA TRANSFORMATION LOG START: {now}\n")
+            self._file_handle.write(f"# SOURCE: {self.source_id}\n")
+            self._file_handle.write("=" * 60 + "\n")
+            # Force buffer flush to disk (good practice for critical data)
+            self._file_handle.flush() 
+
+    def copy_buffer(self, content_chunk: str):
+        """
+        Action: Copies a new content chunk (token value) into the accumulation buffer.
+        """
+        self.content_buffer.append(content_chunk)
+
+    def write_output(self, output_type: str):
+        """
+        Action: Writes the current content buffer to the output file, prepended 
+        with the specified type, and clears the buffer.
+        """
+        if not self._file_handle:
+            print("ERROR: Output file handle not initialized.", file=os.sys.stderr)
+            return
+
+        if not self.content_buffer:
+            # If nothing to write, do nothing and return.
+            return
+
+        # 1. Join all buffered chunks into a single string
+        output_line = "".join(self.content_buffer)
+        
+        # 2. Prefix the line and write to file
+        self._file_handle.write(f"{output_type}: {output_line}\n")
+        self._file_handle.flush() # Flush after every line for immediate logging
+        
+        # 3. Clear the buffer for the next accumulation cycle
+        self.content_buffer.clear()
+
+    # --- Action Function Proxies ---
+
+    def action_none(self):
+        """PDA Action: Does nothing (clears the buffer just in case)."""
+        self.content_buffer.clear()
+
+    def action_copy_buffer(self, content_chunk: str):
+        """PDA Action: Copies a content chunk."""
+        self.copy_buffer(content_chunk)
+
+    def action_output_code(self):
+        """PDA Action: Outputs buffered content as CODE."""
+        self.write_output(output_type="CODE")
+
+    def action_output_comment(self):
+        """PDA Action: Outputs buffered content as CMMT."""
+        self.write_output(output_type="CMMT")
+        
+    def close_output_file(self):
+        """
+        Must be called once the parser run is complete to ensure data is flushed
+        and the file handle is properly closed.
+        """
+        if self._file_handle:
+            self._file_handle.write("=" * 60 + "\n")
+            self._file_handle.write(f"# PDA TRANSFORMATION LOG END: {datetime.datetime.now().isoformat()}\n")
+            self._file_handle.write("=" * 60 + "\n")
+            self._file_handle.close()
+            self._file_handle = None

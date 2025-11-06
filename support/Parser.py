@@ -1,3 +1,11 @@
+
+#### deprecated - busted down to the snippets folder
+#### functionality can be replicated by running
+#### pedro as a module: python -m support.pedro
+
+
+
+
 # File Parser.py -- uses Lexi and Pedro to parse a file.
 # I think this one is just a bunch of functions, shouldn't define any data structures
 # This sorts out file IO, calls the Lexi and Pedro (PDA) run methods and 

@@ -41,7 +41,6 @@ Q_CODE = 'q_code'            # Inside a SQL code block (main context)
 Q_BK_CMMT = 'q_bk_cmmt'      # Inside a block comment (/* ... */)
 Q_LN_CMMT = 'q_ln_cmmt'      # Inside a line/dd comment (--)
 Q_STR = 'q_str'              # Inside a single-quoted string ('...')
-Q_ACCEPT = 'q_accept'        # Final state reached upon EOF (Accept)
 
 # --- Stack Symbol Definitions --- (Γ)(Gamma) ---
 G_Z0 = 'Z0'               # Initial stack bottom marker
@@ -89,7 +88,7 @@ PDA_TRANSITIONS = {
     (Q_START, T_END_STATEMENT, G_Z0):      (Q_START, G_NUL , A_None),
     # nothing on stack, in start, hit a newline (so consumed), go to next line and see wazzup
     (Q_START, T_NEWLINE, G_Z0):            (Q_START, G_NUL, A_None),
-   # in start, hit a newline as above, but there was a content chunk on the stack !!! confirm must be code?
+    # in start, hit a newline as above, but there was a content chunk on the stack !!! confirm must be code?
     (Q_START, T_NEWLINE, G_CC):            (Q_CODE, G_NUL, A_None),
         
     # --- CODE CONTEXT (G_CC = CC on stack) ---
@@ -108,10 +107,7 @@ PDA_TRANSITIONS = {
     # End statement (main goal)
     (Q_CODE, T_END_STATEMENT, G_CC):        (Q_START, G_POP, A_OutputCode),
 
-    # EOF on code means final output - but maybe should have a ";"?
-    (Q_CODE, T_EOF, G_CC):                  (Q_ACCEPT, G_POP, A_OutputCode),
-
-    # --- Block/ML Comment Context (G_BC on stack) ---
+     # --- Block/ML Comment Context (G_BC on stack) ---
     # Accumulate comment content (non-ending chunk)
     (Q_BK_CMMT, T_CONTENT_CHUNK, G_BC):     (Q_BK_CMMT, G_NUL, A_CopyBuffer),
 
@@ -135,10 +131,10 @@ PDA_TRANSITIONS = {
     (Q_LN_CMMT, T_SINGLE_QUOTE, G_LC):      (Q_LN_CMMT, G_NUL, A_CopyBuffer),
 
     # End SL comment -> Returns to previous context (S or Z0)
-    (Q_LN_CMMT, T_NEWLINE, G_LC):           (Q_CODE, G_POP, A_OutputCmmt), # Return to S
+    (Q_LN_CMMT, T_NEWLINE, G_LC):           (Q_CODE, G_POP, A_OutputCmmt),  # Return to S
     (Q_LN_CMMT, T_NEWLINE, G_Z0):           (Q_START, G_POP, A_OutputCmmt), # Return to Z0
-
-        # --- SINGLE-QUOTED STRING CONTEXT (STR_S on stack) ---
+ 
+    # --- SINGLE-QUOTED STRING CONTEXT (STR_S on stack) ---
     # Accumulate content inside the string (NOTE: no action on stack)
     (Q_STR, T_CONTENT_CHUNK, G_ST):        (Q_STR, G_NUL, A_CopyBuffer),
 
@@ -148,6 +144,4 @@ PDA_TRANSITIONS = {
     # End string (pop G_ST marker) -> Returns to Q_CODE context
     (Q_STR, T_SINGLE_QUOTE, G_ST):         (Q_CODE, G_POP, A_CopyBuffer),
 
-    # --- GLOBAL ACCEPT/REJECT ---
-    (Q_START, T_EOF, G_Z0):                 (Q_ACCEPT, G_NUL, A_None),
 }
