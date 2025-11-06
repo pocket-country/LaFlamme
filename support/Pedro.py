@@ -68,7 +68,7 @@ class PDA:
                 current_token = self.token_list[tptr]
                 # got a token, build trigger signature
                 current_top = self.stack[-1]
-                transition_trigger = (self.state, current_token.ttype, current_top)
+                transition_trigger = (current_token.ttype, self.state, current_top)
             except IndexError:
                   break
                 
