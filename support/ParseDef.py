@@ -53,14 +53,15 @@ G_NUL = 'NUL'             # Special symbol used in the action list to signify 'n
 
 # --- Action Name Definitions (Translator Mode) ---
 A_None = 'A_None'            # No execution action required
-A_CopyBuffer = 'A_CopyBuffer'    # Copy token content to statement buffer
-A_OutputCode = 'A_OutputCode'    # Finalize buffer, classify as CODE, and clear
-A_OutputCmmt = 'A_OutputCmmt'    # Finalize buffer, classify as CMMT, and clear
+A_Content2Buffer = 'Content2Buffer'    # Copy token content to statement buffer
+# these now happen automatically on pop
+#A_OutputCode = 'A_OutputCode'    # Finalize buffer, classify as CODE, and clear
+#A_OutputCmmt = 'A_OutputCmmt'    # Finalize buffer, classify as CMMT, and clear
 
 
 # --- Transition Table --- (δ)(delta) ---
 # The general form of the transition function is:
-# delta :(Q X Sigma Union epsilon X  Gamma Union epsilon) ->  P(Q X Gagmma) Where 
+# delta :(Q X Sigma Union epsilon X  Gamma Union epsilon) ->  P(Q X Gamma) Where 
 #  (Q X Sigma X Gamma Union epsilon) is input representing: 
 #  Current state, the input symbol (Token) being read and the symbol currently on the top of the stack (or epsilon if the stack is ignored or empty).
 #
@@ -105,7 +106,7 @@ PDA_TRANSITIONS = {
     (T_SINGLE_QUOTE, Q_CODE, G_CC):         (Q_STR, G_ST, A_CopyBuffer),
 
     # End statement (main goal)
-    (T_END_STATEMENT, Q_CODE, G_CC):        (Q_START, G_POP, A_OutputCode),
+    (T_END_STATEMENT, Q_CODE, G_CC):        (Q_START, G_POP, A_None),
 
      # --- Block/ML Comment Context (G_BC on stack) ---
     # Accumulate comment content (non-ending chunk)
@@ -117,11 +118,11 @@ PDA_TRANSITIONS = {
 
     # End Block comment (pop the G_BC marker) -> Returns to previous context 
     # ... which was a comment (!!!confirm)
-    (T_END_BLOCK_COMMENT, Q_BK_CMMT, G_BC): (Q_START, G_POP, A_OutputCmmt), 
+    (T_END_BLOCK_COMMENT, Q_BK_CMMT, G_BC): (Q_START, G_POP, A_None), 
     # ... which was a code line ... (!!! confirm)
-    (T_END_BLOCK_COMMENT, Q_BK_CMMT, G_CC): (Q_CODE, G_POP, A_OutputCmmt), 
+    (T_END_BLOCK_COMMENT, Q_BK_CMMT, G_CC): (Q_CODE, G_POP, A_None), 
     # ... which was the bottom of the stack (!!!) confirm
-    (T_END_BLOCK_COMMENT, Q_BK_CMMT, G_Z0): (Q_START, G_POP, A_OutputCmmt),
+    (T_END_BLOCK_COMMENT, Q_BK_CMMT, G_Z0): (Q_START, G_POP, A_None),
 
     # --- SINGLE-LINE COMMENT CONTEXT (G_LC on stack) ---
     # Accumulate comment content (non-ending chunk)
@@ -131,8 +132,8 @@ PDA_TRANSITIONS = {
     (T_SINGLE_QUOTE, Q_LN_CMMT, G_LC):      (Q_LN_CMMT, G_NUL, A_CopyBuffer),
 
     # End SL comment -> Returns to previous context (S or Z0)
-    (T_NEWLINE, Q_LN_CMMT, G_LC):           (Q_CODE, G_POP, A_OutputCmmt),  # Return to S
-    (T_NEWLINE, Q_LN_CMMT, G_Z0):           (Q_START, G_POP, A_OutputCmmt), # Return to Z0
+    (T_NEWLINE, Q_LN_CMMT, G_LC):           (Q_CODE, G_POP, A_None),  # Return to S
+    (T_NEWLINE, Q_LN_CMMT, G_Z0):           (Q_START, G_POP, A_None), # Return to Z0
  
     # --- SINGLE-QUOTED STRING CONTEXT (STR_S on stack) ---
     # Accumulate content inside the string (NOTE: no action on stack)
