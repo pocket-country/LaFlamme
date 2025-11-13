@@ -22,7 +22,20 @@ class Token:
         # Makes printing the object directly cleaner
         return self.to_ascii_line()
 
-
+@dataclass
+class StackFrame:
+    """Represents a single item on the PDA stack for the transformer."""
+    # At the reccomendation of our little friend, am going to make this a data only
+    # class and not a full on nested class in our PDA.  We want the code to 
+    # be ledgeable to the Pythonista masses.
+    symbol: str             # The PDA stack symbol/state marker (e.g., 'Z0', 'BC', 'STR')
+    seq_num: int            # Tracks source code statement sequencing
+    buffer: List[str]       # A list of content chunks gathered during parsing that make up the statement
+    
+    # apparently a dataclass annotation gives us magical functionality.  I still would like to attach buffer
+    # handling methods to this class, but we will see how it goes.
+    
+    
 class CharacterStream:
     """
     Manages reading characters from a pre-loaded source string,

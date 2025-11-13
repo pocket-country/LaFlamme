@@ -3,46 +3,58 @@ import sys
 from typing import List, Tuple, Dict, Optional, Union
 import os
 
-from .StructDef import Token, CharacterStream
+from .StructDef import Token, CharacterStream, StackFrame
 from . import ParseDef as pda
 
 # --- PDA Class Implementation ---
 class PDA:
     def __init__(self, transitions: Dict, tokens, trans_trace):
         self.transitions = transitions
-        self.stack: List[0] = [pda.G_Z0]  # Initialize with stack bottom Z0
-        self.state: PDAState = pda.Q_START
         self.token_list: List[Token] = tokens
+        self.state: PDAState = pda.Q_START
+        
+        # Initialize stack bottom 
+        self.stack: List[StackFrame] = [
+            StackFrame(symbol = pda.G_Z0, seq_num = 0, buffer = [])
+        ]# 
+ 
         self.datalog = trans_trace          # we assume this has been properly initialized
 
-    def _handle_stack(self, action):
+    def _handle_stack(self, action) -> Optional[StackFrame]:
         """ 
         private method. Only side effects - stack manipulation.
-        Note special action symbols and that we never push the bottom-o-stack marker
+        Note special action symbols and that we never push the bottom-o-stack marker, this is set up on initial
         Note: Only one stach symbol at a time
+        Mod to return stack frame on pop.
+        When initializing new stack frame, bump the sequence number from the old track, so we don't have to store current statement number
         """
         match action:
 
             case pda.G_NUL:
             # if nothing to do ... empty list ... just exit
-                return
+                return None
 
             # if action is POP just pop.
             case pda.G_POP:
                 # guard against malformed stack process, could test symbol or for []
                 if len(self.stack) <= 1:
                     Print("ERROR: Attempted to pop initial stack symbol Z0")
-                    return
+                    return None
 
-                self.stack.pop()
+                return self.stack.pop()
 
             # OK here we have a symbol to push
             # Note that in a more powerful parser we would want to have a mechanism for
             # pushing a sequence of symbols but here there should only ever be one.
             # using python magic syntax to assert one symbol in list, and assign that symbol
             case pda.G_CC | pda.G_BC | pda.G_LC | pda.G_ST as symbol_to_push:
-                self.stack.append(symbol_to_push)
-                return
+                new_frame = StackFrame(
+                    symbol = symbol_to_push
+                    seq_num = self.stack[-1].seq_num + 1
+                    buffer = []
+                )
+                self.stack.append(new_frame)
+                return None
 
             # if we are here something bad happened.  I feel a disturbance in the force
             case _:
@@ -68,7 +80,7 @@ class PDA:
                 current_token = self.token_list[tptr]
                 # got a token, build trigger signature
                 current_top = self.stack[-1]
-                transition_trigger = (current_token.ttype, self.state, current_top)
+                transition_trigger = (current_token.ttype, self.state, current_top.symbol)
             except IndexError:
                   break
                 
@@ -95,7 +107,30 @@ class PDA:
                 self.state = next_state
 
                 # --- Apply Stack Action ---
-                self._handle_stack(stack_action)
+                result = self._handle_stack(stack_action)
+                
+                # if we have a stack frame popped off the top of the stack, well, it means the 
+                # statement being processed in that frame is complete.  So, assemble the 
+                # content chunks in the buffer and output the statement
+                # The fields in the output line are:  statement sequence #, statement type, statement text
+                # set up fields here for clarity.
+                if result is not None:
+                    stmt_seq = result.seq_num
+                
+                    stmt_type = "OOPS"
+                    if result.symbol == '':
+                        stmt_type = "CODE"
+                    if result.symbol == '':
+                        stmt_type = "CMMT"
+                    
+                    stmt_text = " ".join(result.buffer)
+                
+                    file_handle.write(f"{stmt_seq}, {stmt_type}, {stmt_text}\n")
+                    # !!! TODO gotta make sure file handle gets passed in via __init__
+                    
+                # Execute "action" action - currently only is one which seems strange
+                if action == pda.A_Content2Buffer:
+                    self.stack[-1].buffer.append(current_token.value)
 
                 # Debug print for tracing (remove this later)
                 #if mode == 'verbose':
@@ -222,12 +257,18 @@ if __name__ == '__main__':
     # set up ruidimentary logger
     logger = LesserTransTrace()
     
-    # instantiate and call our PDA to parser
-    parser = PDA(pda.PDA_TRANSITIONS, lexer.tokens, logger)
-    result = parser.run()
-    if result:
-        print(f"Pedro: File parsed correctly")
-        sys.exit(0)
-    else:
-        print(f"Pedro: File did not parse")
-        sys.exit(1)
+    # open output file for translated SQL code ... 
+    # and nest PDA/parser run within it so don't do file handling in PDA
+    with open('output.csv', 'w') as f_handle:
+        
+        # instantiate and call our PDA to parser
+        transformer = PDA(pda.PDA_TRANSITIONS, lexer.tokens, logger)
+        result = parser.run()
+    
+    # set return code based on parse result.
+        if result:
+            print(f"Pedro: File parsed correctly")
+            sys.exit(0)
+        else:
+            print(f"Pedro: File did not parse")
+            sys.exit(1)
