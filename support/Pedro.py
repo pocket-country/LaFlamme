@@ -1,6 +1,6 @@
 # --- Pedro.py --- Pushdown Automaton (PDA) Parser
 import sys
-from typing import List, Tuple, Dict, Optional, Union
+from typing import List, Tuple, Dict, Optional, Union, TextIO
 import os
 
 from .StructDef import Token, CharacterStream, StackFrame
@@ -8,17 +8,18 @@ from . import ParseDef as pda
 
 # --- PDA Class Implementation ---
 class PDA:
-    def __init__(self, transitions: Dict, tokens, trans_trace):
-        self.transitions = transitions
-        self.token_list: List[Token] = tokens
-        self.state: PDAState = pda.Q_START
+    def __init__(self, transitions: Dict, tokens, trans_trace, outfile: TextIO):
+        self.transitions = transitions              # This is the set of trigger -> response patterns that drive the PDA
+        self.token_list: List[Token] = tokens       # This is the list of tokens to process from the lexer
         
-        # Initialize stack bottom 
+        # Initialize with starting state and stack bottom marker
+        self.state: PDAState = pda.Q_START          
         self.stack: List[StackFrame] = [
             StackFrame(symbol = pda.G_Z0, seq_num = 0, buffer = [])
         ]# 
  
-        self.datalog = trans_trace          # we assume this has been properly initialized
+        self.datalog = trans_trace          # A class to trace transactions.  We assume this has been properly initialized. 
+        self.text_out = outfile             # An already opened file handle to write transformed text (statements!)
 
     def _handle_stack(self, action) -> Optional[StackFrame]:
         """ 
@@ -125,10 +126,12 @@ class PDA:
                     
                     stmt_text = " ".join(result.buffer)
                 
-                    file_handle.write(f"{stmt_seq}, {stmt_type}, {stmt_text}\n")
-                    # !!! TODO gotta make sure file handle gets passed in via __init__
+                    text_out.write(f"{stmt_seq}, {stmt_type}, {stmt_text}\n")
+                    
                     
                 # Execute "action" action - currently only is one which seems strange
+                # My AI Jr. Dev was begging me to put this in a set of nested functions for 'encapsulation' but
+                # it is actually pretty simple to write a line of code.  Why have this great chaining notation if we don't use it?
                 if action == pda.A_Content2Buffer:
                     self.stack[-1].buffer.append(current_token.value)
 
