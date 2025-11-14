@@ -82,7 +82,7 @@ A_Content2Buffer = 'Content2Buffer'    # Copy token content to statement buffer
 
 PDA_TRANSITIONS = {
     # --- STARTING NEW STATEMENTS (Z0 context) ---
-    (T_CONTENT_CHUNK, Q_START, G_Z0):      (Q_CODE, G_CC, A_CopyBuffer),
+    (T_CONTENT_CHUNK, Q_START, G_Z0):      (Q_CODE, G_CC, A_Content2Buffer),
     (T_START_BLOCK_COMMENT, Q_START, G_Z0):(Q_BK_CMMT, G_BC, A_None),
     (T_START_LINE_COMMENT, Q_START, G_Z0): (Q_LN_CMMT, G_LC, A_None),
     # slightly pathalogical but legal null program
@@ -94,7 +94,7 @@ PDA_TRANSITIONS = {
         
     # --- CODE CONTEXT (G_CC = CC on stack) ---
     # Accumulate code ... why would this happen?  Two contiguous code chunks equlvalent to one code chunk ...
-    (T_CONTENT_CHUNK, Q_CODE, G_CC):        (Q_CODE, G_NUL, A_CopyBuffer),
+    (T_CONTENT_CHUNK, Q_CODE, G_CC):        (Q_CODE, G_NUL, A_Content2Buffer),
     # skip a newline, stay in code (as no ";" yet) and keep accumulating ..
     (T_NEWLINE, Q_CODE, G_CC):              (Q_CODE, G_NUL, A_None),
 
@@ -103,18 +103,18 @@ PDA_TRANSITIONS = {
     (T_START_LINE_COMMENT, Q_CODE, G_CC):   (Q_LN_CMMT, G_LC, A_None),
 
     # Begin string quote contexts
-    (T_SINGLE_QUOTE, Q_CODE, G_CC):         (Q_STR, G_ST, A_CopyBuffer),
+    (T_SINGLE_QUOTE, Q_CODE, G_CC):         (Q_STR, G_ST, A_Content2Buffer),
 
     # End statement (main goal)
     (T_END_STATEMENT, Q_CODE, G_CC):        (Q_START, G_POP, A_None),
 
      # --- Block/ML Comment Context (G_BC on stack) ---
     # Accumulate comment content (non-ending chunk)
-    (T_CONTENT_CHUNK, Q_BK_CMMT, G_BC):     (Q_BK_CMMT, G_NUL, A_CopyBuffer),
+    (T_CONTENT_CHUNK, Q_BK_CMMT, G_BC):     (Q_BK_CMMT, G_NUL, A_Content2Buffer),
 
     # Ignore all other delimiters inside Block comment (e.g., Q_STR, START_BLOCK_COMMENT)
-    (T_SINGLE_QUOTE, Q_BK_CMMT, G_BC):      (Q_BK_CMMT, G_NUL, A_CopyBuffer),
-    (T_START_LINE_COMMENT, Q_BK_CMMT, G_BC):(Q_BK_CMMT, G_NUL, A_CopyBuffer),
+    (T_SINGLE_QUOTE, Q_BK_CMMT, G_BC):      (Q_BK_CMMT, G_NUL, A_Content2Buffer),
+    (T_START_LINE_COMMENT, Q_BK_CMMT, G_BC):(Q_BK_CMMT, G_NUL, A_Content2Buffer),
 
     # End Block comment (pop the G_BC marker) -> Returns to previous context 
     # ... which was a comment (!!!confirm)
@@ -126,10 +126,10 @@ PDA_TRANSITIONS = {
 
     # --- SINGLE-LINE COMMENT CONTEXT (G_LC on stack) ---
     # Accumulate comment content (non-ending chunk)
-    (T_CONTENT_CHUNK, Q_LN_CMMT, G_LC):     (Q_LN_CMMT, G_NUL, A_CopyBuffer),
+    (T_CONTENT_CHUNK, Q_LN_CMMT, G_LC):     (Q_LN_CMMT, G_NUL, A_Content2Buffer),
 
     # Ignore everything until NEWLINE
-    (T_SINGLE_QUOTE, Q_LN_CMMT, G_LC):      (Q_LN_CMMT, G_NUL, A_CopyBuffer),
+    (T_SINGLE_QUOTE, Q_LN_CMMT, G_LC):      (Q_LN_CMMT, G_NUL, A_Content2Buffer),
 
     # End SL comment -> Returns to previous context (S or Z0)
     (T_NEWLINE, Q_LN_CMMT, G_LC):           (Q_CODE, G_POP, A_None),  # Return to S
@@ -137,11 +137,11 @@ PDA_TRANSITIONS = {
  
     # --- SINGLE-QUOTED STRING CONTEXT (STR_S on stack) ---
     # Accumulate content inside the string (NOTE: no action on stack)
-    (T_CONTENT_CHUNK, Q_STR, G_ST):        (Q_STR, G_NUL, A_CopyBuffer),
+    (T_CONTENT_CHUNK, Q_STR, G_ST):        (Q_STR, G_NUL, A_Content2Buffer),
 
     # Ignore delimiters inside the string
-    (T_START_BLOCK_COMMENT, Q_STR, G_ST):  (Q_STR, G_NUL, A_CopyBuffer),
+    (T_START_BLOCK_COMMENT, Q_STR, G_ST):  (Q_STR, G_NUL, A_Content2Buffer),
 
     # End string (pop G_ST marker) -> Returns to Q_CODE context
-    (T_SINGLE_QUOTE, Q_STR, G_ST):         (Q_CODE, G_POP, A_CopyBuffer)
+    (T_SINGLE_QUOTE, Q_STR, G_ST):         (Q_CODE, G_POP, A_Content2Buffer)
 }

@@ -16,10 +16,12 @@ class PDA:
         self.state: PDAState = pda.Q_START          
         self.stack: List[StackFrame] = [
             StackFrame(symbol = pda.G_Z0, seq_num = 0, buffer = [])
-        ]# 
+        ]
  
         self.datalog = trans_trace          # A class to trace transactions.  We assume this has been properly initialized. 
         self.text_out = outfile             # An already opened file handle to write transformed text (statements!)
+        
+        self.has_run = False                # an internal flag, the PDA is a single use object!
 
     def _handle_stack(self, action) -> Optional[StackFrame]:
         """ 
@@ -50,8 +52,8 @@ class PDA:
             # using python magic syntax to assert one symbol in list, and assign that symbol
             case pda.G_CC | pda.G_BC | pda.G_LC | pda.G_ST as symbol_to_push:
                 new_frame = StackFrame(
-                    symbol = symbol_to_push
-                    seq_num = self.stack[-1].seq_num + 1
+                    symbol = symbol_to_push,
+                    seq_num = self.stack[-1].seq_num + 1,
                     buffer = []
                 )
                 self.stack.append(new_frame)
@@ -63,8 +65,11 @@ class PDA:
                 # or we could put on big boy pants and raise an exception, halt
 
     def run(self, mode = 'verbose') -> bool:
-        self.state = pda.Q_START  # Reset state
-        self.stack = [pda.G_Z0]  # Reset stack
+        if self.has_run:
+            print("PDA has finished processing.  To re-run PDA/Parsing please re-initialize!")
+            return
+        else:
+            self.has_run = True
         
         # We loop forever processing tokens.  Three exit conditions are contained in the loop body:
         # - hit the end of the token list
@@ -81,6 +86,7 @@ class PDA:
                 current_token = self.token_list[tptr]
                 # got a token, build trigger signature
                 current_top = self.stack[-1]
+                print(f"{tptr}: {current_top}")
                 transition_trigger = (current_token.ttype, self.state, current_top.symbol)
             except IndexError:
                   break
@@ -96,7 +102,7 @@ class PDA:
                 # If we find a rule ...
                 transition_response = self.transitions[transition_trigger]
                 
-                # quick - log the transition!
+                # -- quick - log the transition!
                 self.datalog.record_transition(
                     transition_trigger,
                     transition_response,
@@ -105,31 +111,40 @@ class PDA:
                 
                 # now break it down into components and get 'er done
                 next_state, stack_action, action = transition_response
+                
+                # -- Update state
+                
+                # hold prior state so can set statement type below if stack is popped
+                prior_state = self.state
+                
                 self.state = next_state
 
-                # --- Apply Stack Action ---
+                # -- Apply Stack Action
                 result = self._handle_stack(stack_action)
                 
-                # if we have a stack frame popped off the top of the stack, well, it means the 
-                # statement being processed in that frame is complete.  So, assemble the 
-                # content chunks in the buffer and output the statement
+                # If we have a stack frame popped off the top of the stack, well, it means the 
+                # statement being processed in that frame is complete.  
+                # So, look at the popped stack frame in the result variable and assemble the 
+                # content chunks in the buffer and output the statement.
                 # The fields in the output line are:  statement sequence #, statement type, statement text
                 # set up fields here for clarity.
                 if result is not None:
                     stmt_seq = result.seq_num
                 
+                    # not sure if this is the best way to do this.
                     stmt_type = "OOPS"
-                    if result.symbol == '':
-                        stmt_type = "CODE"
-                    if result.symbol == '':
+                    if prior_state == pda.Q_BK_CMMT or prior_state == pda.Q_LN_CMMT:
                         stmt_type = "CMMT"
+                    else:
+                        stmt_type = "CODE"
                     
                     stmt_text = " ".join(result.buffer)
                 
-                    text_out.write(f"{stmt_seq}, {stmt_type}, {stmt_text}\n")
+                    self.text_out.write(f"{stmt_seq}, {stmt_type}, {stmt_text}\n")
                     
                     
-                # Execute "action" action - currently only is one which seems strange
+                # -- Execute "action" action - currently only is one which seems strange
+                
                 # My AI Jr. Dev was begging me to put this in a set of nested functions for 'encapsulation' but
                 # it is actually pretty simple to write a line of code.  Why have this great chaining notation if we don't use it?
                 if action == pda.A_Content2Buffer:
@@ -162,7 +177,7 @@ class PDA:
             tptr += 1
 
         # Out of token processing loop -- see how we finished up (Final Acceptance Check)
-        if current_token.ttype == pda.T_EOF and len(self.stack) == 1 and self.stack[0] == pda.G_Z0:
+        if current_token.ttype == pda.T_EOF and len(self.stack) == 1 and self.stack[0].symbol == pda.G_Z0:
             # log a dummy End of File (EOF) transition
             eof_transaction_response = ('EOF= > Exit', 'NULL', 'NULL')
             self.datalog.record_transition(
@@ -265,9 +280,9 @@ if __name__ == '__main__':
     with open('output.csv', 'w') as f_handle:
         
         # instantiate and call our PDA to parser
-        transformer = PDA(pda.PDA_TRANSITIONS, lexer.tokens, logger)
-        result = parser.run()
-    
+        transformer = PDA(pda.PDA_TRANSITIONS, lexer.tokens, logger, f_handle)
+        result = transformer.run()
+        
     # set return code based on parse result.
         if result:
             print(f"Pedro: File parsed correctly")
