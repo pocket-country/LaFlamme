@@ -1,1 +1,2 @@
-1, CODE, Select * From #temp
+2, CODE, ' grab it
+1, CODE, Select *  Into #Temp From DBO.source Where flag =  '
